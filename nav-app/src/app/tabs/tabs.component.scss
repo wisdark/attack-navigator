@@ -189,14 +189,12 @@ input[type=file]{
 }
 
 .header {
-
-
-    div {display: inline-block; cursor: pointer;
-    }
+    text-align: right;
+    div { display: inline-block; cursor: pointer; }
     .logo {
-        position: absolute;
-        top: 0;
-        right: 0;
+        // position: absolute;
+        // top: 0;
+        text-align: right;
         a {
             text-decoration: none;
             color: rgb(176, 26, 26);
@@ -222,5 +220,52 @@ input[type=file]{
         width: 2ex;
         height: 2ex;
         padding: 5px;
+    }
+}
+
+
+.inputTable {
+    width: 100%;
+    border-collapse: collapse;
+    tr {
+        &.featureRow:hover {
+            background: darken(white, 5%)
+        }
+        transition: ease 0.2s;
+
+        width: 100%;
+        // background: darken(white, 5%);
+        margin-top: 5px;
+        border-radius: 5px;
+
+        td {
+            text-align: left;
+            width: 1%;
+            padding: 5px;
+            &.featureRow-button {
+                img {vertical-align: middle; margin-bottom: 2px;}
+            }
+            &.subfeature {
+                &:first-child {
+                    border-left: 1px solid $panel-dark;
+                }
+                &.last {
+                    border-bottom: 1px solid $panel-dark;
+                }
+            }
+        }
+    }
+}
+
+#layerlinkfield {
+    color: rgba(0,0,0,.42);
+    /deep/.mat-form-field-underline {
+        background: none;
+        background-image: linear-gradient(to right,rgba(0,0,0,.42) 0,rgba(0,0,0,.42) 33%,transparent 0);
+        background-size: 4px 1px;
+        background-repeat: repeat-x;
+    }
+    #layerLink {
+        cursor: pointer;
     }
 }

@@ -11,7 +11,7 @@ import {FormsModule, ReactiveFormsModule} from '@angular/forms';
 import {MatTooltipModule} from '@angular/material/tooltip';
 import {MatMenuModule} from '@angular/material/menu';
 import {MatExpansionModule} from '@angular/material/expansion';
-import {AngularMultiSelectModule} from 'angular2-multiselect-dropdown/angular2-multiselect-dropdown';
+import { ColorPickerModule } from 'ngx-color-picker';
 
 import { AppComponent } from './app.component';
 import { DataTableComponent } from './datatable/data-table.component';
@@ -19,6 +19,8 @@ import { TabsComponent } from './tabs/tabs.component';
 import {DynamicTabsDirective} from './tabs/dynamic-tabs.directive';
 import { TabComponent } from './tab/tab.component';
 import { HelpComponent } from './help/help.component';
+import { ExporterComponent } from './exporter/exporter.component';
+
 
 @NgModule({
   declarations: [
@@ -28,6 +30,7 @@ import { HelpComponent } from './help/help.component';
     TabComponent,
     DynamicTabsDirective,
     HelpComponent,
+    ExporterComponent,
   ],
   imports: [
     BrowserModule,
@@ -41,7 +44,7 @@ import { HelpComponent } from './help/help.component';
     MatTooltipModule,
     MatMenuModule,
     MatExpansionModule,
-    AngularMultiSelectModule
+    ColorPickerModule,
   ],
   exports: [
       MatSelectModule,
@@ -49,7 +52,7 @@ import { HelpComponent } from './help/help.component';
       MatButtonModule,
       MatTooltipModule,
       MatMenuModule,
-      MatExpansionModule
+      MatExpansionModule,
   ],
   providers: [],
   bootstrap: [AppComponent],

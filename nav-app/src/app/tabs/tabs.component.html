@@ -1,6 +1,13 @@
 <link href="https://fonts.googleapis.com/css?family=Roboto+Mono:500" rel="stylesheet">
-
-<div *ngIf="dynamicTabs.length > 0">
+<div *ngIf="configService.getFeature('header')" [style.margin-bottom]="configService.getFeature('tabs') ? '0px' : '15px'" class="header" >
+    <div class="logo">
+        <a href="http://attack.mitre.org">MITRE ATT&CK<sup style="font-size: 6pt">TM</sup> Navigator</a>
+    </div>
+    <div *ngIf="configService.getFeature('tabs')" class="helpButton" matTooltip="help" (click)="newHelpTab(forceNew=false)">
+        ?
+    </div>
+</div>
+<div [style.margin-top]="configService.getFeature('header') ? '0px' : '15px'" *ngIf="dynamicTabs.length > 0 && configService.getFeature('tabs')">
     <ul class="tabs">
         <!-- dynamic tabs (can be opened and closed) -->
         <li *ngFor="let tab of dynamicTabs; let $i = index" (click)="selectTab(tab)" [class.active]="tab.active">
@@ -10,11 +17,11 @@
             <!-- <input [disabled]="!tab.active || !tab.dataContext" (click)="!tab.active || !tab.dataContext ? selectTab(tab) : selectTab(tab)" [style.cursor]="tab.active ? tab.dataContext ? 'text' : 'default' : 'pointer'" type="text" [(ngModel)]="tab.dataContext ? tab.dataContext.name : tab.title" [style.width]="tab.dataContext ? ((tab.dataContext.name.length) * 8.4) + 'px' : (tab.title.length * 8.4) + 'px' "> -->
             <!-- <input [id]="'tabtitleinput' + $i" (click)="!tab.active || !tab.dataContext ? selectTab(tab, 'tabtitleinput' + $i) : continue" [style.cursor]="tab.active ? tab.dataContext ? 'text' : 'default' : 'pointer'" type="text" [(ngModel)]="tab.dataContext ? tab.dataContext.name : tab.title" [style.width]="tab.dataContext ? ((tab.dataContext.name.length) * 8.4) + 'px' : (tab.title.length * 8.4) + 'px' "> -->
 
-            <a *ngIf="!tab.active || !tab.dataContext" href="#" [style.cursor]="tab.active ? 'default' : 'pointer'">{{tab.dataContext ? tab.dataContext.name : tab.title}}</a>
-            <input *ngIf="!(!tab.active || !tab.dataContext)" [style.cursor]="tab.active ? tab.dataContext ? 'text' : 'default' : 'pointer'" type="text" [(ngModel)]="tab.dataContext.name" [style.width]="tab.dataContext ? ((tab.dataContext.name.length) * 8.4) + 'px' : (tab.title.length * 8.4) + 'px' ">
+            <a *ngIf="!tab.active || !tab.isDataTable" href="#" [style.cursor]="tab.active ? 'default' : 'pointer'">{{tab.isDataTable ? tab.dataContext.name : tab.title}}</a>
+            <input *ngIf="!(!tab.active || !tab.isDataTable)" [style.cursor]="tab.active ? tab.isDataTable ? 'text' : 'default' : 'pointer'" type="text" [(ngModel)]="tab.dataContext.name" [style.width]="tab.isDataTable ? ((tab.dataContext.name.length) * 8.4) + 'px' : (tab.title.length * 8.4) + 'px' ">
             <span class="tab-close" *ngIf="tab.isCloseable" (click)="closeTab(tab)">x</span>
 
-            <span class="tabEnumerator" *ngIf="getActiveTab().showScoreVariables && tab.dataContext && alphabetical(indexToChar($i))">{{indexToChar($i)}}</span>
+            <span class="tabEnumerator" *ngIf="getActiveTab().showScoreVariables && tab.isDataTable && alphabetical(indexToChar($i))">{{indexToChar($i)}}</span>
         </li>
         <!-- open new tab button -->
         <!-- <li (click)="openTab('new tab', blankTab, null, true, false, true)"> -->
@@ -29,7 +36,10 @@
 </div>
 
 
-<ng-content></ng-content>
+<div [style.margin-top]="configService.getFeature('tabs') || configService.getFeature('header') ? '0px' : '15px'">
+    <ng-content></ng-content>
+</div>
+
 <ng-template dynamic-tabs #container></ng-template>
 
 
@@ -51,7 +61,7 @@
                 <!-- this content will never be shown because clicking opens a new layer tab -->
             </mat-expansion-panel>
 
-            <mat-expansion-panel #uploadlayer hideToggle="true" (click)="openUploadPrompt(); uploadlayer.close()">
+            <!-- <mat-expansion-panel #uploadlayer hideToggle="true" (click)="openUploadPrompt(); uploadlayer.close()">
                 <mat-expansion-panel-header>
                     <mat-panel-title>
                         Upload Existing Layer
@@ -63,22 +73,36 @@
                 </mat-expansion-panel-header>
                 <input id="uploader" type="file" style="display: none" (change)="loadLayer()"/>
                 <!-- this content will never be shown because clicking opens a new layer tab -->
-            </mat-expansion-panel>
+            <!--</mat-expansion-panel> -->
 
-            <!-- <mat-expansion-panel>
+            <mat-expansion-panel>
                 <mat-expansion-panel-header>
                     <mat-panel-title>
                     Open Existing Layer
                     </mat-panel-title>
                     <mat-panel-description>
-                        Upload a layer from your computer, or load from online
+                        Load a layer from your computer or a URL
                     </mat-panel-description>
                 </mat-expansion-panel-header>
-                <button mat-button (click)="openUploadPrompt()">Upload from local</button>
-                <input id="uploader" type="file" style="display: none" (change)="loadLayer()"/>
+                <table class="inputTable">
+                    <tr>
+                        <td><button mat-button (click)="openUploadPrompt()">Upload from local</button>
+                        <input id="uploader" type="file" style="display: none" (change)="loadLayerFromFile()"/></td>
 
-                <button mat-button>Load from remote</button> -->
-            <!-- </mat-expansion-panel> -->
+                        <td><b style="font-size: 8pt">OR</b></td>
+                        <td><mat-form-field>
+                            <input type="text"
+                                   matInput
+                                   placeholder="Load from URL"
+                                   [(ngModel)]="loadURL"/>
+                            <button mat-button matSuffix mat-icon-button aria-label="go" *ngIf="loadURL" (click)="loadLayerFromURL(loadURL, true)">></button>
+                        </mat-form-field></td>
+                    </tr>
+                </table>
+
+
+
+            </mat-expansion-panel>
 
             <!-- <mat-expansion-panel [disabled]="viewModelsService.viewModels.length < 2"> -->
             <mat-expansion-panel (opened)="getActiveTab().showScoreVariables = true" (closed)="getActiveTab().showScoreVariables = false">
@@ -160,17 +184,96 @@
                             Choose which layer to import filters - stages and platforms - from. Leave blank to initialize with no filters.
                         </td>
                     </tr>
+                    <tr>
+                        <td>
+                            <mat-form-field>
+                                <mat-select placeholder="legend" [(ngModel)]="legendItems">
+                                    <mat-option [value]="null">none</mat-option>
+                                    <mat-option *ngFor="let vm of viewModelsService.viewModels" [value]=vm>{{vm.name}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </td>
+                        <td>
+                            Choose which layer to import the legend from. Leave blank to initialize with an empty legend.
+                        </td>
+                    </tr>
                 </table>
 
                 <button mat-button [disabled]="getScoreExpressionError()" (click)="layerByOperation(); showScoreVariables = false">Create</button>
 
             </mat-expansion-panel>
+
+            <mat-expansion-panel>
+                <mat-expansion-panel-header>
+                    <mat-panel-title>
+                        Create Customized Navigator
+                    </mat-panel-title>
+                    <mat-panel-description>
+                        Create a hyperlink to a customized ATT&CK Navigator
+                    </mat-panel-description>
+                </mat-expansion-panel-header>
+
+
+                <table class="inputTable">
+                    <tr>
+                        <td><h1>Default Layer</h1></td>
+                        <td></td>
+                    </tr>
+                    <tr class="custom_nav_inputsection">
+                        <td><mat-form-field>
+                            <input type="text"
+                            matInput
+                            placeholder="default layer URL"
+                            [(ngModel)]="layerLinkURL"/>
+                        </mat-form-field></td>
+                        <td>Enter the URL of a layer hosted on the web. The custom navigator will open this layer by default.</td>
+                    </tr>
+                    <tr>
+                        <td><h1>Navigator Features</h1></td>
+                        <td></td>
+                    </tr>
+                    <ng-template ngFor let-featureItem [ngForOf]="customizedConfig" let-featureItemIndex="index">
+                        <tr class="featureRow noselect" *ngIf="!featureItem.subfeatures"  (click)="featureItem.enabled = !featureItem.enabled">
+                            <td class="featureRow-button">
+                                <img height="16px" [src]="featureItem.enabled ? 'assets/icons/ic_check_box_black_24px.svg' : 'assets/icons/ic_check_box_outline_blank_black_24px.svg'"/> {{featureItem.name.split("_").join(" ")}}
+                            </td>
+                            <td>{{featureItem.description}}</td>
+
+                        </tr>
+                        <tr *ngIf="featureItem.subfeatures">
+                            <td>
+                                <h2>{{featureItem.name.split("_").join(" ")}}</h2>
+                            </td>
+                            <td></td>
+                        </tr>
+                        <ng-template ngFor let-subfeature [ngForOf]="featureItem.subfeatures" let-subfeatureIndex="index" let-last="last">
+                            <tr class="featureRow noselect" (click)="subfeature.enabled = !subfeature.enabled">
+                                <td class="featureRow-button subfeature" [class.last]="last" style="padding-left: 20px" >
+                                    <img height="16px" [src]="subfeature.enabled ? 'assets/icons/ic_check_box_black_24px.svg' : 'assets/icons/ic_check_box_outline_blank_black_24px.svg'"/> {{subfeature.name.split("_").join(" ")}}
+                                </td>
+                                <td class="subfeature" [class.last]="last">{{subfeature.description}}</td>
+                            </tr>
+                        </ng-template>
+                    </ng-template>
+                </table>
+                <div style="text-align: center; margin-top: 20px">
+                    <mat-form-field id="layerlinkfield">
+                        <input id="layerLink" type="text"
+                        matInput
+                        readonly="readonly"
+                        (click)="selectLayerLink()"
+                        [value]="getLayerLink()"
+                        placeholder="custom navigator URL"/>
+                        <button (click)="copyLayerLink()" mat-button matSuffix mat-icon-button aria-label="copy"><img src="assets/icons/ic_content_copy_black_24px.svg" width="14px" alt="copy" matTooltip="copy" matTooltipPosition="right"></button>
+                        <mat-hint *ngIf="copiedRecently">copied</mat-hint>
+                    </mat-form-field>
+                </div>
+
+
+
+            </mat-expansion-panel>
         </mat-accordion>
 
-        <!-- <button (click)="showLayerOperations = !showLayerOperations">Create Layer from other layers</button> <br />
-        <div *ngIf="showLayerOperations" class="layerOperationsPanel">
-
-        </div> -->
         <div class="helpButtonContainer">
             <button mat-button (click)="newHelpTab(replace=false, forceNew=false)">help</button>
         </div>
@@ -179,8 +282,8 @@
 
 </ng-template>
 
-<ng-template #layerTab let-data="data">
-    <DataTable [viewModel]=data></DataTable>
+<ng-template #layerTab let-data="data" let-active="active">
+    <DataTable *ngIf="active" [viewModel]=data></DataTable>
 </ng-template>
 
 <ng-template #helpTab>
@@ -190,11 +293,8 @@
 
 </ng-template>
 
-<div class="header" >
-    <div class="logo">
-        <a href="http://attack.mitre.org">MITRE ATT&CK<sup style="font-size: 6pt">TM</sup> Navigator</a>
+<ng-template #exporterTab let-data="data">
+    <div class="border">
+        <exporter [exportData]=data></exporter>
     </div>
-    <div class="helpButton" matTooltip="help" (click)="newHelpTab(forceNew=false)">
-        ?
-    </div>
-</div>
+</ng-template>

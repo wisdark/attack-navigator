@@ -5,12 +5,16 @@ import { Component, AfterContentInit, QueryList, ContentChildren, ViewChild, Com
 import { DynamicTabsDirective } from './dynamic-tabs.directive';
 import { TabComponent } from '../tab/tab.component';
 import { DataService, Technique } from '../data.service'; //import the DataService component so we can use it
+import { ConfigService } from '../config.service';
 import { DataTableComponent} from '../datatable/data-table.component';
+import { ExportData } from "../exporter/exporter.component";
 
 import { ViewModelsService, ViewModel, TechniqueVM, Gradient, Gcolor } from "../viewmodels.service";
 
 import {ErrorStateMatcher} from '@angular/material/core'
 import {FormControl} from '@angular/forms';
+import { Http } from '@angular/http';
+import * as globals from './../globals';
 
 declare var math: any; //use mathjs
 
@@ -18,7 +22,7 @@ declare var math: any; //use mathjs
     selector: 'tabs',
     templateUrl: './tabs.component.html',
     styleUrls: ['./tabs.component.scss'],
-    providers: [ViewModelsService]
+    providers: [ViewModelsService, ConfigService]
 
 })
 export class TabsComponent implements AfterContentInit {
@@ -34,13 +38,12 @@ export class TabsComponent implements AfterContentInit {
     @ViewChild('blankTab') blankTab;
     @ViewChild('layerTab') layerTab;
     @ViewChild('helpTab') helpTab;
-
-    configData: object = {};
+    @ViewChild('exporterTab') exporterTab;
 
     ds: DataService = null;
     vms: ViewModelsService = null;
     techniques: Technique[] = [];
-    constructor(private _componentFactoryResolver: ComponentFactoryResolver, private viewModelsService: ViewModelsService, private dataService: DataService) {
+    constructor(private _componentFactoryResolver: ComponentFactoryResolver, private viewModelsService: ViewModelsService, private dataService: DataService, private http: Http, private configService: ConfigService) {
         let self = this;
         this.ds = dataService;
         this.viewModelsService = viewModelsService;
@@ -51,18 +54,37 @@ export class TabsComponent implements AfterContentInit {
 
 
     ngAfterContentInit() {
-        this.ds.retreiveConfig().subscribe((config: Object) => {
+        this.ds.getConfig().subscribe((config: Object) => {
             this.viewModelsService.domain = config["domain"];
             // console.log("INITIALIZING APPLICATION FOR DOMAIN: " + this.viewModelsService.domain);
-            this.newLayer();
+            if (this.getNamedFragmentValue("layerURL")) {
+                this.loadURL = this.getNamedFragmentValue("layerURL");
+                // console.log(this.loadURL)
+                this.loadLayerFromURL(this.loadURL, true);
+                if (this.dynamicTabs.length == 0) this.newLayer(); // failed load from url, so create new blank layer
+            } else if (config["default_layers"]["enabled"]){
+                let first = true;
+                for (let url of config["default_layers"]["urls"]) {
+                    console.log(url);
+                    this.loadLayerFromURL(url, first);
+                    first = false;
+                }
+                // this.loadURL = config["default_layer"]["location"]
+                // console.log(this.loadURL)
+                // this.loadLayerFromLocalFile();
+                if (this.dynamicTabs.length == 0) this.newLayer(); // failed load from url, so create new blank layer
+            } else {
+                this.newLayer();
+            }
             let activeTabs = this.dynamicTabs.filter((tab)=>tab.active);
 
             // if there is no active tab set, activate the first
             if(activeTabs.length === 0) {
                 this.selectTab(this.dynamicTabs[0]);
             }
-        });
 
+            this.customizedConfig = this.configService.getFeatureList()
+        });
     }
 
     /**
@@ -73,8 +95,10 @@ export class TabsComponent implements AfterContentInit {
      * @param  {Boolean} [isCloseable=false] can this tab be closed?
      * @param  {Boolean} [replace=false]     replace the current tab with the new tab, TODO
      * @param  {Boolean} [forceNew=false]    force open a new tab even if a tab of that name already exists
+     * @param  {Boolean} [dataTable=false]   is this a data-table tab? if so tab text should be editable
+
      */
-    openTab(title: string, template, data, isCloseable = false, replace = true, forceNew = false) {
+    openTab(title: string, template, data, isCloseable = false, replace = true, forceNew = false, dataTable = false) {
 
         if (!template) {
             console.error("ERROR: no template defined for tab titled ''", title, "''");
@@ -109,6 +133,7 @@ export class TabsComponent implements AfterContentInit {
         instance.dataContext = data;
         instance.isCloseable = isCloseable;
         instance.showScoreVariables = false;
+        instance.isDataTable = dataTable
 
         // remember the dynamic component for rendering the
         // tab navigation headers
@@ -225,7 +250,7 @@ export class TabsComponent implements AfterContentInit {
      * @param  {[type]} replace=false replace the current tab with this blank tab?
      */
     newBlankTab(replace=false) {
-        this.openTab('new tab', this.blankTab, null, true, replace, true)
+        this.openTab('new tab', this.blankTab, null, true, replace, true, false)
     }
 
     /**
@@ -236,6 +261,10 @@ export class TabsComponent implements AfterContentInit {
     newHelpTab(replace=false, forceNew=false): void {
         if (replace) this.closeActiveTab()
         this.openTab('help', this.helpTab, null, true, replace, false)
+    }
+
+    newExporterTab(exportData: ExportData) {
+        this.openTab('render: ' + exportData.viewModel.name, this.exporterTab, exportData, true, false, true)
     }
 
     /**
@@ -280,7 +309,7 @@ export class TabsComponent implements AfterContentInit {
 
         // create and open VM
         let vm = this.viewModelsService.newViewModel(name);
-        this.openTab(name, this.layerTab, vm, true, true, true)
+        this.openTab(name, this.layerTab, vm, true, true, true, true)
     }
 
     /**
@@ -319,6 +348,7 @@ export class TabsComponent implements AfterContentInit {
     enabledness: ViewModel = null;
     filters: ViewModel = null;
     scoreExpression: string = "";
+    legendItems: ViewModel = null;
     /**
      * layer layer operation
      */
@@ -341,10 +371,11 @@ export class TabsComponent implements AfterContentInit {
 
         let layerName = this.getUniqueLayerName("layer by operation")
         try {
-            let vm = this.viewModelsService.layerLayerOperation(this.scoreExpression, scoreVariables, this.comments, this.coloring, this.enabledness, layerName, this.filters)
-            this.openTab(layerName, this.layerTab, vm, true, true, true)
+            let vm = this.viewModelsService.layerLayerOperation(this.scoreExpression, scoreVariables, this.comments, this.coloring, this.enabledness, layerName, this.filters, this.legendItems)
+            this.openTab(layerName, this.layerTab, vm, true, true, true, true)
         } catch (err) {
-            alert("Math error" + err.message)
+            console.log(err)
+            alert("Layer Layer operation error: " + err.message)
         }
 
 
@@ -396,7 +427,7 @@ export class TabsComponent implements AfterContentInit {
     /**
      * Loads an existing layer into a tab
      */
-    loadLayer(): void {
+    loadLayerFromFile(): void {
         var input = (<HTMLInputElement>document.getElementById("uploader"));
         if(input.files.length < 1){
             alert("You must select a file to upload!")
@@ -416,18 +447,113 @@ export class TabsComponent implements AfterContentInit {
         let viewModel = this.viewModelsService.newViewModel("loading layer...");
 
         reader.onload = (e) =>{
-            var string = reader.result;
+            var string = String(reader.result);
             try{
                 viewModel.deSerialize(string)
-                this.openTab("new layer", this.layerTab, viewModel, true, true, true)
+                this.openTab("new layer", this.layerTab, viewModel, true, true, true, true)
             }
             catch(err){
+                console.error("ERROR: Either the file is not JSON formatted, or the file structure is invalid.", err);
                 alert("ERROR: Either the file is not JSON formatted, or the file structure is invalid.");
-                // console.log("ERROR: Either the file is not JSON formatted, or the file structure is invalid.", err);
                 this.viewModelsService.destroyViewModel(viewModel)
             }
         }
         reader.readAsText(file);
+    }
+
+    loadURL: string = "";
+    /**
+     * attempt an HTTP GET to loadURL, and load the response (if it exists) as a layer.
+     */
+    loadLayerFromURL(loadURL, replace): void {
+        // if (!loadURL.startsWith("http://") && !loadURL.startsWith("https://") && !loadURL.startsWith("FTP://")) loadURL = "https://" + loadURL;
+        this.http.get(loadURL).subscribe((res) => {
+            
+            let viewModel = this.viewModelsService.newViewModel("loading layer...");
+            let content = res.text();
+            try {
+                viewModel.deSerialize(content)
+                console.log(loadURL, viewModel);
+                this.openTab("new layer", this.layerTab, viewModel, true, replace, true, true)
+            } catch(err) {
+                console.log(err)
+                alert("ERROR: Failed to load layer file from URL")
+                this.viewModelsService.destroyViewModel(viewModel)
+            }
+        }, (err) => {
+            console.error(err)
+            if (err.status == 0) {
+                // no response
+                alert("ERROR: no HTTP response from " + loadURL)
+            } else {
+                // response, but not a good one
+                alert("ERROR: HTTP response " + err.status + " ("+err.statusText+") for URL " + err.url)
+            }
+
+        })
+
+    }
+
+
+    //   ___ _   _ ___ _____ ___  __  __ ___ _______ ___    _  _   ___   _____ ___   _ _____ ___  ___   ___ _____ _   _ ___ ___
+    //  / __| | | / __|_   _/ _ \|  \/  |_ _|_  / __|   \  | \| | /_\ \ / /_ _/ __| /_\_   _/ _ \| _ \ / __|_   _| | | | __| __|
+    // | (__| |_| \__ \ | || (_) | |\/| || | / /| _|| |) | | .` |/ _ \ V / | | (_ |/ _ \| || (_) |   / \__ \ | | | |_| | _|| _|
+    //  \___|\___/|___/ |_| \___/|_|  |_|___/___|___|___/  |_|\_/_/ \_\_/ |___\___/_/ \_\_| \___/|_|_\ |___/ |_|  \___/|_| |_|
+    layerLinkURL = ""; //the user inputted layer link which will get parsed into a param
+    customizedConfig = [];
+
+    /**
+     * Convert layerLinkURL to a query string value for layerURL query string
+     * @return URL such that when opened will create navigator instance with a query String
+     *         specifying layerLinkURL as the URL to fetch the default layer from
+     */
+    getLayerLink(): string {
+        // if (!this.layerLinkURL) return "";
+        let str = window.location.href.split("#")[0];
+        let join = "#" //hash first, then ampersand
+        if (this.layerLinkURL) {
+            str += join + "layerURL=" + encodeURIComponent(this.layerLinkURL)
+            join = "&";
+        }
+        for (let i = 0; i < this.customizedConfig.length; i++) {
+            if (this.customizedConfig[i].subfeatures) {
+                for (let j = 0; j < this.customizedConfig[i].subfeatures.length; j++) {
+                    if (!this.customizedConfig[i].subfeatures[j].enabled) {
+                        str += join + this.customizedConfig[i].subfeatures[j].name + "=false"
+                        join = "&";
+                    }
+                }
+            } else {
+                if (!this.customizedConfig[i].enabled) {
+                    str += join + this.customizedConfig[i].name + "=false"
+                    join = "&";
+                }
+            }
+        }
+
+        return str
+    }
+    /**
+     * Select the layer link field text
+     */
+    selectLayerLink(): void {
+        let copyText = <HTMLInputElement>document.getElementById("layerLink");
+        console.log(copyText)
+        console.log(copyText.value)
+        copyText.select();
+    }
+
+    copiedRecently = false; // true if copyLayerLink has been called recently -- reverts to false after 2 seconds
+    /**
+     * copy the created layer link to the user's clipboard
+     */
+    copyLayerLink(): void {
+        console.log("attempting copy")
+        this.selectLayerLink();
+        document.execCommand("Copy");
+        this.copiedRecently = true;
+        let self = this;
+        window.setTimeout(function() {self.copiedRecently = false}, 2000);
     }
 
     /**
@@ -437,6 +563,22 @@ export class TabsComponent implements AfterContentInit {
      */
     alphabetical(text: string): boolean {
         return /^[a-z]+$/.test(text);
+    }
+
+    /**
+     * get a key=value fragment value by key
+     * @param  {string} name name of param to get the value of
+     * @param  {string} url  optional, if unspecified searches in current window location. Otherwise searches this string
+     * @return {string}      fragment param value
+     */
+    getNamedFragmentValue(name: string, url?: string): string {
+        if (!url) url = window.location.href;
+        name = name.replace(/[\[\]]/g, "\\$&");
+        var regex = new RegExp("[#&]" + name + "(=([^&#]*)|&|#|$)"),
+        results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
     }
 
 }

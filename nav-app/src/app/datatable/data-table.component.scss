@@ -4,7 +4,7 @@
 // $cell-highlight-color: rgb(96, 197, 255);
 // $hover-cell-font-color: rgb(0, 0, 0);
 @import "../../colors.scss";
-
+@import "../../styles.scss";
 $cellSize: 15px;
 
 
@@ -13,15 +13,7 @@ $cellSize: 15px;
 // | __ || | (_ | __ | |__ | | (_ | __ | | |  | || .` | (_ |
 // |_||_|___\___|_||_|____|___\___|_||_| |_| |___|_|\_|\___|
 
-.noselect {
-  -webkit-touch-callout: none; /* iOS Safari */
-    -webkit-user-select: none; /* Safari */
-     -khtml-user-select: none; /* Konqueror HTML */
-       -moz-user-select: none; /* Firefox */
-        -ms-user-select: none; /* Internet Explorer/Edge */
-            user-select: none; /* Non-prefixed version, currently
-                                  supported by Chrome and Opera */
-}
+
 
 
  //  __  __   _   ___ _  _   _____ _   ___ _    ___
@@ -36,9 +28,10 @@ $cellSize: 15px;
     // table { border-collapse: collapse; table-layout: auto; width: 99%;}
     table {
         table-layout: fixed;
+        border-collapse: collapse;
     }
 
-    &.mini {
+    &.compact {
         text-align: center;
     }
 
@@ -54,6 +47,7 @@ $cellSize: 15px;
         // IMPORTANT: use 1% to make every cell equal size when expanding to fill space,
         // and minimum width of their contents when collapsing
         width: 1%;
+        &.mini {line-height: 3px;}
     }
 
     .techniques:hover {
@@ -64,56 +58,60 @@ $cellSize: 15px;
         width: 100%;
         display: inline-block;
         padding: 2px;
+        margin-top: 3px;
 
         &:not(.itemcount) {
             border: 1px solid;
+            &.mini {
+                width: 2px;
+                height: 2px;
+                margin-right: 1px;
+            }
 
             .editing { border-color: black; }
             &:not(.editing) {
-                &:not(.mini) { border: none; padding: 3px; }
-                &.mini { border-color: $cell-border-color;}
+                &:not(.compact):not(.mini) { border: none; padding: 3px; }
+                &.compact,&.mini:not(.header) { border-color: $cell-border-color;}
             }
         }
 
         &.itemcount {
             border: 1px solid;
-            border-color: white white black white;
-         }
-        margin-top: 3px;
+            border-color: rgba(255, 255, 255, 0) rgba(255, 255, 255, 0) black rgba(255, 255, 255, 0);
+        }
+
+        &.editing {
+            border-color: black;
+        }
+
+        &.header {
+            font-weight: bold;
+            &:hover {color: $cell-highlight-color; }
+            &.mini {background-color: black; border-color: black; }
+        }
+
+        &.highlight {
+            background: $cell-highlight-color;
+            span { color: black; }
+        }
+
+        &.disabled:not(.highlight) {
+            span {color: $cell-border-color;} //span is required to make sure color doesn't affect border colors too
+            &.compact { background: url("data:image/svg+xml;utf8, <svg xmlns='http://www.w3.org/2000/svg' version='1.1' preserveAspectRatio='none' viewBox='0 0 10 10'><path d='M 10 0 L 0 10' fill='none' stroke='#cccccc' stroke-width='1' /></svg>"); }
+            &.mini { background: url("data:image/svg+xml;utf8, <svg xmlns='http://www.w3.org/2000/svg' version='1.1' preserveAspectRatio='none' viewBox='0 0 10 10'><path d='M 10 0 L 0 10' fill='none' stroke='#b8b8b8' stroke-width='1' /></svg>"); }
+        }
+        &.has-comment:not(.disabled) {
+            span {
+                //color is assigned from config file
+                border-bottom: 2px solid transparent;
+            }
+        }
     }
-
-    // conditional classes:
-
-    .editing {
-        border-color: black;
-    }
-
-    .header {
-        font-weight: bold;
-        &:hover {color: $cell-highlight-color; }
-    }
-
-    .highlight {
-        background: $cell-highlight-color;
-        span { color: black; }
-    }
-
-    .disabled:not(.highlight) {
-        span {color: $cell-border-color;} //span is required to make sure color doesn't affect border colors too
-        &.mini { background: url("data:image/svg+xml;utf8, <svg xmlns='http://www.w3.org/2000/svg' version='1.1' preserveAspectRatio='none' viewBox='0 0 10 10'><path d='M 10 0 L 0 10' fill='none' stroke='#cccccc' stroke-width='1' /></svg>"); }
-    }
-
     .anti-highlight:not(.highlight) {
         div:not(.editing) {
             &:not(.has-score-background) {
                 &:not(:hover) { color: $cell-border-color; }
             }
-        }
-    }
-
-    .has-comment:not(.disabled) {
-        span {
-            border-bottom: 2px solid yellow;
         }
     }
 }
@@ -127,114 +125,16 @@ $cellSize: 15px;
     // width: 100%;
     border: 1px solid $panel-dark;
     padding: 10px;
-    .full {
-        overflow-x: scroll;
-        overflow-y: hidden;
-    }
-    .mini {
-        // overflow-x: hidden;
-    }
-
 }
 
 
-//   ___ ___  _  _ _____ ___  ___  _    ___
-//  / __/ _ \| \| |_   _| _ \/ _ \| |  / __|
-// | (_| (_) | .` | | | |   / (_) | |__\__ \
-//  \___\___/|_|\_| |_| |_|_\\___/|____|___/
-
-// $inputFontSize: 10pt;
-// panel with controls
-.controlsContainer {
-    background-color: $panel-dark;
-    // width: 100%;
-    text-align: right;
-    // padding: 0 3px;
-    // display: flex;
-    display: block;
-    ul { margin: 0; }
-    // justify-content: space-between;
-    // font: 400 12px system-ui;
-
-    .control-sections>li {
-        list-style: none;
-        display: inline-block;
-        // &:not(:last-child){
-        border-left: 1px solid darken($panel-dark, 8%);
-        padding: 0 5px 0 5px;
-        position: relative;
-        // text-align: center;
-        // label for a section of controls, e.g layer controls or technique controls
-        .section-label {
-            font-size: 8pt;
-            // height: 8px;
-            top: -13px;
-            position: absolute;
-            // border: 1px 1px 0 1px solid black;
-            border-color: white;
-            border-style: solid;
-            border-width: 1px 1px 0 1px;
-            // width:50%;
-            // left: 25%;
-            padding: 0 5px;
-            background-color: $panel-dark;
-            border-radius: 2px 2px 0 0;
-            text-align: center;
-            color: $tab-text-color;
-            cursor: default;
-            user-select: none;
-
-            // bottom: 10px;
-        }
-
-        .control-row-item {
-            vertical-align: middle;
-            display: inline-block;
-            position: relative;
-
-            .control-row-button {
-                border-radius: 3px;
-                padding: 5px;
-                height: 24px;
-                cursor: pointer;
-                &:hover { background-color: darken($panel-dark, 5%); }
-                &.dropdown::after {
-                    font-size: 5pt;
-                    content: "▼";
-                }
-            }
-        }
-    }
-}
-
-// dropdown controls container
-.dropdown-container {
-    &.left { right: 0 }
-    border: 1px solid black;
-    background-color: white;
-    box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.5);
-    position: absolute;
-    z-index: 100; //draw on top of other controls
-    width: max-content;
-
-    &.inputfield {
-        width:  150px;
-        padding: 0px 10px;
-        mat-form-field {
-            width: 100%;
-            &:first-child {
-                padding-top:5px;
-            }
-        }
-    }
-}
 
 .multiselect-dropdown{
     display: inline-block;
 }
 
 .colorpicker {
-    width: ($cellSize + 5 + 2) * 4;
+    width: ($cellSize + 5 + 2) * 4 !important; //override preset width
     align-items: center;
     text-align: center;
     .color-block {
@@ -255,10 +155,23 @@ $cellSize: 15px;
     }
 }
 
-//gradient controls
+//color controls
 $panel-light: lighten($panel-dark, 8%);
-.gradients {
+.colorSetup {
     font-size: 8pt;
+    .colorpicker {
+        width: 10ex;
+    }
+    .gradient-section-label {
+        font-weight: bold;
+        padding: 4px;
+        text-align: center;
+    }
+    .gradient-section-content {
+        border-top: 1px solid black;
+        border-bottom: 1px solid black;
+        text-align: left;
+    }
     .display-buttons {
         // width: 183px;
         text-align: center;
@@ -266,6 +179,7 @@ $panel-light: lighten($panel-dark, 8%);
         .squarebutton {
             border: 1px solid $panel-dark;
             padding: 4px 0;
+            cursor: pointer;
             &:hover {
                 background: $panel-light;
             }
@@ -349,6 +263,14 @@ $panel-light: lighten($panel-dark, 8%);
 .contextMenu-box {
     position: absolute;
     // background: white;
+    &.left { right: 0 }
+    border: 1px solid black;
+    background-color: white;
+    box-shadow: 10px 10px 5px rgba(0, 0, 0, 0.5);
+    position: absolute;
+    z-index: 100; //draw on top of other controls
+    width: max-content;
+
     .contextMenu-section {
         &:not(:first-child) {
             border-top: 1px solid $panel-dark;
@@ -377,17 +299,26 @@ $panel-light: lighten($panel-dark, 8%);
 
     font-size: 8pt;
     color: white;
+
     max-width: 150px;
     overflow-x: hidden;
-    // table {
-    //     border-collapse: collapse;
-    //     background: none;
-    //     // width: 100px;
-    //     td:first-child {
-    //         text-align: right;
-    //         width: 9ex;
-    //     }
-    // }
+
+    .comment {
+        max-height: 300px;
+        overflow-y: hidden;
+    }
+
+    .comment-overflow-note {
+        // color: rgb(255, 199, 190);
+    }
+    .metadatalist {
+        margin: 0;
+        margin-top: 1px;
+        padding-left: 6px;
+        list-style: none;
+
+    }
+
 }
 
 .mat-select{:focus {
@@ -497,44 +428,6 @@ $panel-light: lighten($panel-dark, 8%);
     }
   }
 
-//////////////////////
-// Checkbox Styling //
-//////////////////////
-
-.checkbox-custom {
-    opacity: 0;
-    position: absolute;
-}
-
-.checkbox-custom, .checkbox-custom-label {
-    display: inline-block;
-    vertical-align: middle;
-    margin: 5px;
-    cursor: pointer;
-}
-
-.checkbox-custom-label {
-    position: relative;
-}
-
-.checkbox-custom + .checkbox-custom-label:before {
-    content: '';
-    background: #fff;
-    border: 3px solid $panel-dark;
-    display: inline-block;
-    vertical-align: middle;
-    width: 10px;
-    height: 10px;
-    padding: 2px;
-    margin-right: 5px;
-    text-align: center;
-}
-
-.checkbox-custom:checked + .checkbox-custom-label:before {
-    background: $cell-highlight-color;
-    box-shadow: inset 0px 0px 0px 1px $cell-highlight-color;
-}
-
 .deselectNumber {
     font-size: 5pt;
     bottom: 2px;
@@ -542,3 +435,88 @@ $panel-light: lighten($panel-dark, 8%);
     position: absolute;
     text-align: right;
 }
+
+.legend {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width:300px;
+    height:300px;
+    background-color: white;
+    border-left: 1px solid $panel-dark;
+    .itemArea {
+        position: static;
+        overflow-y: scroll;
+        margin-top:30px;
+        height:270px;
+        width:100%;
+        overflow-x:hidden;
+        .item {
+            width:100%;
+            height:40px;
+            padding-left:5px;
+            .label {
+                margin-left:10px;
+                width:150px;
+            }
+
+        }
+        .even {
+            background-color: $panel-light;
+            width:100%;
+            height:40px;
+            .label {
+                margin-left:10px;
+                width:150px;
+            }
+        }
+    }
+}
+
+.legendBar {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    width:300px;
+    height:30px;
+    background-color: $panel-dark;
+    transition: 0.3s;
+    &:hover {
+        background: $cell-highlight-color;
+        cursor: pointer;
+    }
+}
+
+.layer_info {
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    width: 250px !important;
+    .name_desc {
+        padding: 0 10px;
+    }
+    .metadata_input {
+        padding-left: 10px;
+        // padding-bottom: 5px; 
+        margin-bottom: 2px; //fix funky scroll overflow
+        max-height: 50vh;
+        overflow-y: auto;
+        text-align: left;
+        table {
+            border-spacing: 5px 15px;
+            // width: 500px;
+            // padding: 0;
+            // margin: 0;
+            // list-style: none;
+            .formfield-group {
+                // &:not(:first-child) { margin-bottom: 5px; }
+                td:first-child { border-width: 1px 0 1px 1px; border-color: black; border-style: solid; width: 5px}
+                // border-left: 1px solid black;
+                // padding-left: 5px;
+                // &:not(:first-child) { margin-top: 10px;}
+                button { margin-bottom: 4px; }
+            }
+        }
+    }
+}
+
+
