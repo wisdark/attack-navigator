@@ -13,8 +13,9 @@ import { ViewModelsService, ViewModel, TechniqueVM, Gradient, Gcolor } from "../
 
 import {ErrorStateMatcher} from '@angular/material/core'
 import {FormControl} from '@angular/forms';
-import { Http } from '@angular/http';
+import { HttpClient } from '@angular/common/http';
 import * as globals from './../globals';
+import { log } from 'util';
 
 declare var math: any; //use mathjs
 
@@ -35,32 +36,37 @@ export class TabsComponent implements AfterContentInit {
 
     // these variables refer to the templates of the same name defined in the HTML.
     // to open a tab use one of these variables as the template variable.
-    @ViewChild('blankTab') blankTab;
-    @ViewChild('layerTab') layerTab;
-    @ViewChild('helpTab') helpTab;
-    @ViewChild('exporterTab') exporterTab;
+    @ViewChild('blankTab', {static: false}) blankTab;
+    @ViewChild('layerTab', {static: false}) layerTab;
+    @ViewChild('helpTab', {static: true}) helpTab;
+    @ViewChild('exporterTab', {static: false}) exporterTab;
 
     ds: DataService = null;
     vms: ViewModelsService = null;
     techniques: Technique[] = [];
-    constructor(private _componentFactoryResolver: ComponentFactoryResolver, private viewModelsService: ViewModelsService, private dataService: DataService, private http: Http, private configService: ConfigService) {
+    constructor(private _componentFactoryResolver: ComponentFactoryResolver, private viewModelsService: ViewModelsService, private dataService: DataService, private http: HttpClient, private configService: ConfigService) {
         let self = this;
         this.ds = dataService;
         this.viewModelsService = viewModelsService;
     }
 
     dynamicTabs: TabComponent[] = [];
-    @ViewChild(DynamicTabsDirective) dynamicTabPlaceholder: DynamicTabsDirective;
+    @ViewChild(DynamicTabsDirective, {static: false}) dynamicTabPlaceholder: DynamicTabsDirective;
 
 
     ngAfterContentInit() {
         this.ds.getConfig().subscribe((config: Object) => {
             this.viewModelsService.domain = config["domain"];
             // console.log("INITIALIZING APPLICATION FOR DOMAIN: " + this.viewModelsService.domain);
-            if (this.getNamedFragmentValue("layerURL")) {
-                this.loadURL = this.getNamedFragmentValue("layerURL");
-                // console.log(this.loadURL)
-                this.loadLayerFromURL(this.loadURL, true);
+            let fragment_value = this.getNamedFragmentValue("layerURL");
+            if (fragment_value && fragment_value.length > 0) {
+                var replace = true;
+                for (var _i = 0, urls_1 = fragment_value; _i < urls_1.length; _i++) {
+                    var url = urls_1[_i];
+                    console.log("loading initial layer", url)
+                    this.loadLayerFromURL(url, replace);
+                    replace = false;
+                }
                 if (this.dynamicTabs.length == 0) this.newLayer(); // failed load from url, so create new blank layer
             } else if (config["default_layers"]["enabled"]){
                 let first = true;
@@ -374,7 +380,7 @@ export class TabsComponent implements AfterContentInit {
             let vm = this.viewModelsService.layerLayerOperation(this.scoreExpression, scoreVariables, this.comments, this.coloring, this.enabledness, layerName, this.filters, this.legendItems)
             this.openTab(layerName, this.layerTab, vm, true, true, true, true)
         } catch (err) {
-            console.log(err)
+            console.error(err)
             alert("Layer Layer operation error: " + err.message)
         }
 
@@ -468,26 +474,25 @@ export class TabsComponent implements AfterContentInit {
     loadLayerFromURL(loadURL, replace): void {
         // if (!loadURL.startsWith("http://") && !loadURL.startsWith("https://") && !loadURL.startsWith("FTP://")) loadURL = "https://" + loadURL;
         this.http.get(loadURL).subscribe((res) => {
-            
+
             let viewModel = this.viewModelsService.newViewModel("loading layer...");
-            let content = res.text();
             try {
-                viewModel.deSerialize(content)
-                console.log(loadURL, viewModel);
+                viewModel.deSerialize(res)
+                console.log("loaded layer from", loadURL);
                 this.openTab("new layer", this.layerTab, viewModel, true, replace, true, true)
             } catch(err) {
-                console.log(err)
-                alert("ERROR: Failed to load layer file from URL")
+                console.error(err)
+                alert("ERROR parsing layer from " + loadURL + ", check the javascript console for more information.")
                 this.viewModelsService.destroyViewModel(viewModel)
             }
         }, (err) => {
             console.error(err)
             if (err.status == 0) {
                 // no response
-                alert("ERROR: no HTTP response from " + loadURL)
+                alert("ERROR retrieving layer from " + loadURL + ", check the javascript console for more information.")
             } else {
                 // response, but not a good one
-                alert("ERROR: HTTP response " + err.status + " ("+err.statusText+") for URL " + err.url)
+                alert("ERROR retrieving layer from " + loadURL + ", check the javascript console for more information.")
             }
 
         })
@@ -499,8 +504,28 @@ export class TabsComponent implements AfterContentInit {
     //  / __| | | / __|_   _/ _ \|  \/  |_ _|_  / __|   \  | \| | /_\ \ / /_ _/ __| /_\_   _/ _ \| _ \ / __|_   _| | | | __| __|
     // | (__| |_| \__ \ | || (_) | |\/| || | / /| _|| |) | | .` |/ _ \ V / | | (_ |/ _ \| || (_) |   / \__ \ | | | |_| | _|| _|
     //  \___|\___/|___/ |_| \___/|_|  |_|___/___|___|___/  |_|\_/_/ \_\_/ |___\___/_/ \_\_| \___/|_|_\ |___/ |_|  \___/|_| |_|
-    layerLinkURL = ""; //the user inputted layer link which will get parsed into a param
+    // layerLinkURL = ""; //the user inputted layer link which will get parsed into a param
+    layerLinkURLs: string[] = [];
     customizedConfig = [];
+
+    /**
+     * Add a new empty layer link to the layerLinkURLs array
+     */
+    addLayerLink(): void {
+        this.layerLinkURLs.push("");
+    }
+
+    /**
+     * Remove the given layer link URL from layerLinkURLs
+     * @param {number} index the index to remove
+     */
+    removeLayerLink(index: number): void {
+        console.log("removing index", index)
+        console.log(this.layerLinkURLs);
+        if (this.layerLinkURLs.length == 1) this.layerLinkURLs = [];
+        else this.layerLinkURLs.splice(index, 1);
+        console.log(this.layerLinkURLs);
+    }
 
     /**
      * Convert layerLinkURL to a query string value for layerURL query string
@@ -511,8 +536,8 @@ export class TabsComponent implements AfterContentInit {
         // if (!this.layerLinkURL) return "";
         let str = window.location.href.split("#")[0];
         let join = "#" //hash first, then ampersand
-        if (this.layerLinkURL) {
-            str += join + "layerURL=" + encodeURIComponent(this.layerLinkURL)
+        for (let layerLinkURL of this.layerLinkURLs) {
+            str += join + "layerURL=" + encodeURIComponent(layerLinkURL)
             join = "&";
         }
         for (let i = 0; i < this.customizedConfig.length; i++) {
@@ -571,14 +596,19 @@ export class TabsComponent implements AfterContentInit {
      * @param  {string} url  optional, if unspecified searches in current window location. Otherwise searches this string
      * @return {string}      fragment param value
      */
-    getNamedFragmentValue(name: string, url?: string): string {
+    getNamedFragmentValue(name: string, url?: string): any {
+
         if (!url) url = window.location.href;
         name = name.replace(/[\[\]]/g, "\\$&");
-        var regex = new RegExp("[#&]" + name + "(=([^&#]*)|&|#|$)"),
-        results = regex.exec(url);
-        if (!results) return null;
-        if (!results[2]) return '';
-        return decodeURIComponent(results[2].replace(/\+/g, " "));
+        var regex = new RegExp("[#&]" + name + "(?:=([^&#]*)|&|#|$)", "g");
+        //match as many results as exist under the name
+        let results = [];
+        let match = regex.exec(url);
+        while (match != null) {
+            results.push(decodeURIComponent(match[1].replace(/\+/g, " ")));
+            match = regex.exec(url);
+        }
+        return results
     }
 
 }
