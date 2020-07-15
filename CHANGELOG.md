@@ -1,3 +1,90 @@
+# v3.1 - 8 July 2020
+ATT&CK Navigator v3.0 and v3.1 includes support for sub-techniques as well as improvements to several of the interfaces and a major refactor of the codebase. The format for the config file and layer file have both changed: please see _Layer File Format Changes_ and _Config File Format Changes_ below for more details. 
+
+If you want to continue using the non-sub-techniques Navigator, please use the [v2.3.2 release](https://github.com/mitre-attack/attack-navigator/releases/tag/v2.3.2) for local instances or the following live instances of Navigator v2.3.2:
+- [Enterprise ATT&CK](https://mitre-attack.github.io/attack-navigator/v2/enterprise/)
+- [Mobile ATT&CK](https://mitre-attack.github.io/attack-navigator/v2/mobile/)
+
+## Improvements
+### Minor
+- Added options to the SVG Export feature for the visibility of sub-techniques. See issue [#142](https://github.com/mitre-attack/attack-navigator/issues/142).
+- Added update layers for March 2020 sub-techniques release. See issue [#138](https://github.com/mitre-attack/attack-navigator/issues/138).
+- Updated the [sample layers](layers/data/samples/) with sub-techniques support. See issue [#138](https://github.com/mitre-attack/attack-navigator/issues/138). We've also released [some scripts on our attack-scripts repository](https://github.com/mitre-attack/attack-scripts/tree/develop/scripts/layers/samples) corresponding to the sample layers.
+- Extended search interface to support searching for techniques based on data sources. See pull request [#158](https://github.com/mitre-attack/attack-navigator/pull/158).
+- Added show/hide all sub-techniques controls under "layer controls". See issue [#141](https://github.com/mitre-attack/attack-navigator/issues/141).
+- Updated the "select sub-techniques with parent" control under the "selection controls" dropdown. Sub-techniques will be selected independently by default. See issue [#140](https://github.com/mitre-attack/attack-navigator/issues/140).
+- Added sub-techniques as a configurable Navigator feature. Sub-technique features can be disabled by editing the `src/assets/config.json` file or using the "create customized Navigator" interface. See issue [#112](https://github.com/mitre-attack/attack-navigator/issues/112).
+- Added option to select scoring gradient from an existing layer in the _create layers from other layers_ interface. See issue [#121](https://github.com/mitre-attack/attack-navigator/issues/121).
+- Added options to select all techniques and sub-techniques with or without annotations in the context menu. See issue [#163](https://github.com/mitre-attack/attack-navigator/issues/163).
+- Added a subscript to the techniques which have sub-techniques. The subscript shows the number of sub-techniques under a given technique and how many of those sub-techniques have annotations while the parent is collapsed. See issue [#162](https://github.com/mitre-attack/attack-navigator/issues/162).
+- Updated the layout of the metadata value key. See issue [#189](https://github.com/mitre-attack/attack-navigator/issues/189).
+
+## Fixes
+- Added internet explorer support for the sub-techniques features, and improved Edge compatibility. See issue [#135](https://github.com/mitre-attack/attack-navigator/issues/135).
+- Fixes a bug causing metadata values to be displayed improperly in tooltips. See issue [#153](https://github.com/mitre-attack/attack-navigator/issues/153).
+- Fixes a bug in which the default layer link input field in the "create customized Navigator" interface loses focus between characters. See issue [#136](https://github.com/mitre-attack/attack-navigator/issues/136).
+- Fixed a bug in "create layer from other layers" interface where inheriting filters would cause the application to crash. See issue [#168](https://github.com/mitre-attack/attack-navigator/issues/168).
+- Fixed a bug where editing the gradient would also change the most recently selected gradient preset. See issue [#167](https://github.com/mitre-attack/attack-navigator/issues/167).
+- Removed duplicate threat group entries from the multiselect interface and included sub-techniques in the selection of techniques related to threat groups, software, or mitigations. See issue [#164](https://github.com/mitre-attack/attack-navigator/issues/164).
+- Fixed a bug in the sub-technique sidebar that occurs when all sub-techniques of a given technique are disabled and hidden. See issue [#177](https://github.com/mitre-attack/attack-navigator/issues/177).
+- Removed the comment underscore from the sub-technique count subscript. See issue [#184](https://github.com/mitre-attack/attack-navigator/issues/184).
+
+# v3.0 - sub-techniques beta
+## New Features
+### Major
+- Added support for sub-techniques. Techniques with sub-techniques will be denoted by a sidebar which can be clicked to show and hide the sub-techniques. Techniques without sub-techniques will not have a sidebar.
+- Added "select techniques with subtechniques" control under "selection controls" dropdown, augmenting the existing "select techniques across tactics" control. By default sub-techniques will be selected along with their parents. See issue [#114](https://github.com/mitre-attack/attack-navigator/issues/114).
+- Added "matrix layout" controls (replacing "view mode"). See issues [#117](https://github.com/mitre-attack/attack-navigator/issues/117) and [#110](https://github.com/mitre-attack/attack-navigator/issues/110).
+    - Supports multiple layouts, and the codebase is designed to allow the addition of new layouts easily. Added the following layouts:
+        - the "side" layout (default), where sub-techniques appear in an adjacent sub-column of the tactic.
+        - the "flat" layout, where sub-techniques appear nested beneath their parent similar to an indented list.
+        - the "mini" layout, where sub-techniques are grouped into boxes with their parent. The "mini" layout is designed to give an overview of the layer without the comparatively complex structure of the "flat" or "side" views.
+    - Added the ability to show technique ATT&CK IDs and names simultaneously, individually or not at all. The "mini" layout overrides this selection. See issue [#124](https://github.com/mitre-attack/attack-navigator/issues/124).
+
+### Minor
+- Added mitigations to multi-select interface. Improved the extensibility of the multi-select interface to make future additions easier. See issue [#119](https://github.com/mitre-attack/attack-navigator/issues/119).
+
+## Improvements
+### Major
+- Major redesign of the "render layer to SVG" feature. 
+    - Added support for sub-techniques. See issue [#116](https://github.com/mitre-attack/attack-navigator/issues/116).
+    - Users will no longer need to specify text size manually. Algorithms have been implemented to automatically maximize text size without overflowing the text container. The overall layer rendering process will take slightly longer than previously due to these computations.
+    - Header and legend (docked and undocked) should be much more aesthetic.
+    - Score gradient legend should now show which scores map to which colors more clearly.
+- Context menu and tooltip improvements:
+    - Visual style has been improved for both context menu and tooltip. 
+    - Tooltip is now statically placed instead of following the cursor, which increases the performance of the UI.
+    - Context menu should now orient itself better to avoid falling off the edge of the screen.
+    - Added "view tactic" button to context menu.
+    - Major improvements to the flexibility of the custom context menu items feature. See _Config File Format Changes_ below for more details.
+- Major refactor to many components should reduce lag and improve extensibility and maintainability of the application. 
+
+### Minor
+- Export to excel: added sub-techniques support. See issue [#115](https://github.com/mitre-attack/attack-navigator/issues/115).
+- Minor UI improvements to the search feature. Disabled regex in search because it was very buggy. See issue [#113](https://github.com/mitre-attack/attack-navigator/issues/113).
+
+## Layer File Format Changes
+Layer file format updated to version 3.0. Older versions can still be loaded in the Navigator, but may have degraded functionality.
+- Removed "viewMode" enumeration in favor of "layout" object. viewMode will get parsed into a layout configuration automatically, but the conversion is not perfect since the layouts have changed.
+- Added "showSubtechniques" field to technique objects. 
+- Added "selectSubtechniquesWithParent" field setting the default value of the "select techniques with subtechniques" control.
+
+The sub-techniques update of ATT&CK caused many techniques to be replaced by sub-techniques. Since the replacing sub-techniques have different IDs, many layers created before the sub-technques release will still be using IDs for the replaced techniques and therefore won't work properly in the new version even if the annotation format is correct. A [conversion script](layers/update-layers.py) is provided in the layers folder which both updates layers to the most recent format and also updates technique IDs to their replacers where possible. There are however a few cases which won't be caught:
+1. Cases where techniques which have been replaced by multiple sub-techniques are ignored entirely due to limitations in the remapping data.
+2. Cases where the `tactic` field was present but the replacing technique is not in that tactic.
+Run `python3 update-layers.py -h` for usage instructions.
+
+## Config File Format Changes
+### Changes to `custom_context_menu_items`
+Custom context menu feature has been significantly improved for flexibility. See _Adding Custom Context Menu Options_ in [the readme](README.md) for more details on the format.
+- Updated substitution string to use double curly braces (e.g `{{technique_name}}`) instead of tildes.
+- Added ability to specify STIX IDs in addition to ATT&CK IDs.
+- Added the option to add a sub-technique specific URL (`subtechnique_url`) which will apply only to sub-techniques. When using the sub-technique URL, extra sub-technique related substitutions are available.
+
+### Changes to `features`
+The "features" structure is used to enable/disable specific Navigator features. It also propagates to the "create customized Navigator" interface.
+- "toggle_view_mode" has been renamed to "layout_controls" and the description updated accordingly. 
+
 # v2.3.2 - 17 January 2020
 ## Improvements
 - Updated trademark to registered trademark and updated copyright date to 2020. See issue [#125](https://github.com/mitre-attack/attack-navigator/pull/125).
