@@ -13,8 +13,19 @@
         td:first-child {
             white-space: nowrap;
         }
+        td.wrap {
+            white-space: normal;
+        }
         tr:nth-child(2) td {
             border-top: 1px solid white;
+        }
+        tr .divider {
+            margin: 0;
+            padding: 0;
+            hr {
+                margin: 0;
+                padding: 0;          
+            }
         }
     }
 }

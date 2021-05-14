@@ -1,4 +1,5 @@
-import { Component, Input, AfterContentInit } from '@angular/core';
+import { Component, OnInit, Inject } from '@angular/core';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { ViewModel, TechniqueVM } from "../viewmodels.service";
 import { ConfigService } from "../config.service";
 import { Technique, DataService, Tactic, Matrix } from '../data.service';
@@ -12,18 +13,22 @@ import { ColorPickerModule } from 'ngx-color-picker';
     templateUrl: './exporter.component.html',
     styleUrls: ['./exporter.component.scss']
 })
-export class ExporterComponent implements AfterContentInit {
-
-    @Input() viewModel: ViewModel;
-
-    private config: any = {}
-    private isIE() {
+export class ExporterComponent implements OnInit {
+    
+    public currentDropdown: string = null;
+    viewModel: ViewModel;
+    public config: any = {}
+    
+    public isIE() {
         return is.ie();
     }
 
     private svgDivName = "svgInsert_tmp"
     unitEnum = 0; //counter for unit change ui element
-    constructor(private configService: ConfigService, private dataService: DataService) {
+    constructor(private dialogRef: MatDialogRef<ExporterComponent>, 
+                private configService: ConfigService, 
+                private dataService: DataService,
+                @Inject(MAT_DIALOG_DATA) public data) {
         this.config = { 
             "width": 11,
             "height": 8.5,
@@ -48,11 +53,15 @@ export class ExporterComponent implements AfterContentInit {
             "showGradient": true,
             "showFilters": true,
             "showAbout": true,
+            "showDomain": true,
+            "showAggregate": false,
         }
-     }
+    }
 
-    ngAfterContentInit() {
+    ngOnInit() {
+        this.viewModel = this.data.vm;
         this.svgDivName = "svgInsert" + this.viewModel.uid;
+        
         let self = this;
         //determine if the layer has any scores
         for (let matrix of this.dataService.getDomain(this.viewModel.domainID).matrices) {
@@ -88,12 +97,15 @@ export class ExporterComponent implements AfterContentInit {
     //visibility of SVG parts
     //assess data in viewModel
     hasName(): boolean {return this.viewModel.name.length > 0}
+    hasDomain(): boolean {return this.viewModel.domainID.length > 0}
     hasDescription(): boolean {return this.viewModel.description.length > 0}
     hasScores: boolean; //does the viewmodel have scores? built in ngAfterViewInit
     hasLegendItems(): boolean {return this.viewModel.legendItems.length > 0;}
 
     //above && user preferences
     showName(): boolean {return this.config.showAbout && this.hasName() && this.config.showHeader}
+    showDomain(): boolean {return this.config.showDomain && this.hasDomain() && this.config.showHeader}
+    showAggregate(): boolean {return this.viewModel.layout.showAggregateScores && this.config.showHeader}
     showDescription(): boolean {return this.config.showAbout && this.hasDescription() && this.config.showHeader}
     showLayerInfo(): boolean {return (this.showName() || this.showDescription()) && this.config.showHeader}
     showFilters(): boolean {return this.config.showFilters && this.config.showHeader};
@@ -482,12 +494,28 @@ export class ExporterComponent implements AfterContentInit {
                 headerSections.push(about)
             }
 
-            if (self.showFilters()) headerSections.push({
-                "title": "filters",
-                "contents": [{
-                    "label": "platforms", "data": this.viewModel.filters.platforms.selection.join(", ") 
-                }]
-            });
+            const config = {"title": "domain", "contents": []};
+            let filterConfig = {"title": "platforms", "contents": []};
+            if (self.showDomain()) {
+                let domain = this.dataService.getDomain(this.viewModel.domainID);
+                config.contents.push({"label": "domain", "data": domain.name + " " + domain.version});
+            }
+            if (self.showFilters()) {
+              const filterData = {"label": "platforms", "data": this.viewModel.filters.platforms.selection.join(", ")};
+              if (self.showAggregate()) {
+                config.title = "domain & platforms";
+                config.contents.push(filterData);
+              } else filterConfig.contents.push(filterData);
+            }
+            if (config.contents.length > 0) headerSections.push(config);
+            if (filterConfig.contents.length > 0) headerSections.push(filterConfig);
+
+            if (self.showAggregate()) {
+              const aggregateConfig = { "title": "aggregate", "contents": []};
+              aggregateConfig.contents.push({"label": "function", "data": "showing aggregate scores using the " + this.viewModel.layout.aggregateFunction + " aggregate function"});
+              if (this.viewModel.layout.countUnscored) aggregateConfig.contents.push({"label": "unscored", "data": "includes unscored techniques as having a score of 0"});
+              headerSections.push(aggregateConfig);
+            }
 
             if (self.showLegendContainer() && self.showLegendInHeader()) headerSections.push(legend);
 
@@ -908,6 +936,7 @@ class RenderableTechnique {
             let techniqueVM: TechniqueVM = this.viewModel.getTechniqueVM(this.technique, this.tactic);
             if (!techniqueVM.enabled) return "white";
             if (techniqueVM.color) return techniqueVM.color;
+            if (this.viewModel.layout.showAggregateScores && techniqueVM.aggregateScoreColor) return techniqueVM.aggregateScoreColor;
             if (techniqueVM.score) return techniqueVM.scoreColor;
         } 
         return "white"; //default

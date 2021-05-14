@@ -12,8 +12,11 @@ export class DataService {
 
     constructor(private http: HttpClient) {
         console.log("initializing data service singleton")
-        this.getConfig().subscribe((config) => {
-            this.setUpURLs(config["versions"]);
+        let subscription = this.getConfig().subscribe({
+            next: (config) => {
+                this.setUpURLs(config["versions"]);
+            },
+            complete: () => { if (subscription) subscription.unsubscribe(); } //prevent memory leaks
         })
     }
 
@@ -110,6 +113,9 @@ export class DataService {
                         break;
                     case "x-mitre-matrix":
                         matrixSDOs.push(sdo);
+                        break;
+                    case "note":
+                        domain.notes.push(new Note(sdo));
                         break;
                 }
             }
@@ -250,9 +256,12 @@ export class DataService {
         let dataPromise: Promise<any> = new Promise((resolve, reject) => {
             let domain = this.getDomain(domainID);
             if (domain) {
-                this.getDomainData(domain, refresh).subscribe((data: Object[]) => {
-                    this.parseBundle(domain, data);
-                    resolve();
+                let subscription = this.getDomainData(domain, refresh).subscribe({
+                    next: (data: Object[]) => {
+                        this.parseBundle(domain, data);
+                        resolve(null);
+                    },
+                    complete: () => { if (subscription) subscription.unsubscribe(); } //prevent memory leaks
                 });
             } else if (!domain) { // domain not defined in config
                 reject("'" + domainID + "' is not a valid domain.")
@@ -474,6 +483,22 @@ export class Mitigation extends BaseStix {
     }
 }
 
+export class Note {
+    public readonly abstract?: string; // brief summary of note content
+    public readonly content: string; // content of the note
+    public readonly object_refs: string[]; // list of STIX objects the note is applied to
+
+    /**
+     * Creates an instance of Note.
+     * @param {*} stixSDO for the note
+    */
+    constructor(stixSDO: any) {
+        if (stixSDO.abstract) this.abstract = stixSDO.abstract;
+        this.content = stixSDO.content;
+        this.object_refs = stixSDO.object_refs;
+    }
+}
+
 export class Domain {
     public readonly id: string; // domain ID
     public readonly name: string; // domain display name
@@ -493,6 +518,7 @@ export class Domain {
     public software: Software[] = [];
     public groups: Group[] = [];
     public mitigations: Mitigation[] = [];
+    public notes: Note[] = [];
     public relationships: any = {
         // subtechnique subtechnique-of technique
         // ID of technique to [] of subtechnique IDs

@@ -10,7 +10,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner'
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDialogModule, MatCheckboxModule } from '@angular/material';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialogModule } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { ColorPickerModule } from 'ngx-color-picker';
@@ -19,8 +20,6 @@ import { HttpClientModule } from '@angular/common/http';
 import { AppComponent } from './app.component';
 import { DataTableComponent } from './datatable/data-table.component';
 import { TabsComponent } from './tabs/tabs.component';
-import { DynamicTabsDirective } from './tabs/dynamic-tabs.directive';
-import { TabComponent } from './tab/tab.component';
 import { HelpComponent } from './help/help.component';
 import { ExporterComponent } from './exporter/exporter.component';
 import { TechniqueCellComponent } from './matrix/technique-cell/technique-cell.component';
@@ -40,8 +39,6 @@ import { VersionUpgradeComponent } from './version-upgrade/version-upgrade.compo
     AppComponent,
     DataTableComponent,
     TabsComponent,
-    TabComponent,
-    DynamicTabsDirective,
     HelpComponent,
     ExporterComponent,
     TechniqueCellComponent,
@@ -82,6 +79,6 @@ import { VersionUpgradeComponent } from './version-upgrade/version-upgrade.compo
   ],
   providers: [],
   bootstrap: [AppComponent],
-  entryComponents: [ TabComponent, VersionUpgradeComponent ]
+  entryComponents: [ VersionUpgradeComponent, HelpComponent, ExporterComponent ]
 })
 export class AppModule { }

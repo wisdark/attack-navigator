@@ -6,36 +6,41 @@ import { DataService, Technique, Tactic } from './data.service'; //import the Da
 })
 export class ConfigService {
     public comment_color = "yellow";
+    public banner: string;
     private features = new Map<string, boolean>();
     private featureGroups = new Map<string, string[]>();
     private featureStructure: object[];
 
-    private contextMenuItems: ContextMenuItem[] = [];
+    public contextMenuItems: ContextMenuItem[] = [];
     constructor(private dataService: DataService) {
         console.log("initializing config service");
         let self = this;
-        dataService.getConfig().subscribe(function(config: any) {
-            //parse feature preferences from config json
-            config["features"].forEach(function(featureObject: any) {
-                self.setFeature_object(featureObject);
-            })
-            //override json preferences with preferences from URL fragment
-            self.getAllFragments().forEach(function(value: string, key: string) {
-                let valueBool = (value == 'true');
-                if (self.isFeature(key) || self.isFeatureGroup(key)) {
-                    // console.log("setting feature", key, valueBool)
-                    self.setFeature(key, valueBool);
+        let subscription = dataService.getConfig().subscribe({
+            next: function(config: any) {
+                //parse feature preferences from config json
+                config["features"].forEach(function(featureObject: any) {
+                    self.setFeature_object(featureObject);
+                })
+                //override json preferences with preferences from URL fragment
+                self.getAllFragments().forEach(function(value: string, key: string) {
+                    let valueBool = (value == 'true');
+                    if (self.isFeature(key) || self.isFeatureGroup(key)) {
+                        // console.log("setting feature", key, valueBool)
+                        self.setFeature(key, valueBool);
+                    }
+                    // else {
+                    //     console.log(key, "is not a feature")
+                    // }
+                })
+                dataService.subtechniquesEnabled = self.getFeature("subtechniques");
+                self.featureStructure = config["features"];
+                self.comment_color = config["comment_color"];
+                self.banner = config["banner"];
+                for (let obj of config["custom_context_menu_items"]) {
+                    self.contextMenuItems.push(new ContextMenuItem(obj.label, obj.url, obj.subtechnique_url))
                 }
-                // else {
-                //     console.log(key, "is not a feature")
-                // }
-            })
-            dataService.subtechniquesEnabled = self.getFeature("subtechniques");
-            self.featureStructure = config["features"];
-            self.comment_color = config["comment_color"];
-            for (let obj of config["custom_context_menu_items"]) {
-                self.contextMenuItems.push(new ContextMenuItem(obj.label, obj.url, obj.subtechnique_url))
-            }
+            }, 
+            complete: () => { if (subscription) subscription.unsubscribe(); } //prevent memory leaks 
         });
     }
 
@@ -209,26 +214,26 @@ export class ContextMenuItem {
 
     public getReplacedURL(technique: Technique, tactic: Tactic): string {
         if (this.subtechnique_url && technique.isSubtechnique) {
-            return this.subtechnique_url.replace("{{parent_technique_attackID}}", technique.parent.attackID)
-                                        .replace("{{parent_technique_stixID}}", technique.parent.id)
-                                        .replace("{{parent_technique_name}}", technique.parent.name.replace(/ /g, "-").toLowerCase())
+            return this.subtechnique_url.replace(/{{parent_technique_attackID}}/g, technique.parent.attackID)
+                                        .replace(/{{parent_technique_stixID}}/g, technique.parent.id)
+                                        .replace(/{{parent_technique_name}}/g, technique.parent.name.replace(/ /g, "-").toLowerCase())
 
-                                        .replace("{{subtechnique_attackID}}", technique.attackID)
-                                        .replace("{{subtechnique_attackID_suffix}}", technique.attackID.split(".")[1])
-                                        .replace("{{subtechnique_stixID}}", technique.id)
-                                        .replace("{{subtechnique_name}}", technique.name.replace(/ /g, "-").toLowerCase())
+                                        .replace(/{{subtechnique_attackID}}/g, technique.attackID)
+                                        .replace(/{{subtechnique_attackID_suffix}}/g, technique.attackID.split(".")[1])
+                                        .replace(/{{subtechnique_stixID}}/g, technique.id)
+                                        .replace(/{{subtechnique_name}}/g, technique.name.replace(/ /g, "-").toLowerCase())
 
-                                        .replace("{{tactic_attackID}}", tactic.attackID)
-                                        .replace("{{tactic_stixID}}", tactic.id)
-                                        .replace("{{tactic_name}}", tactic.shortname);
+                                        .replace(/{{tactic_attackID}}/g, tactic.attackID)
+                                        .replace(/{{tactic_stixID}}/g, tactic.id)
+                                        .replace(/{{tactic_name}}/g, tactic.shortname);
         } else {
-            return this.url.replace("{{technique_attackID}}", technique.attackID)
-                           .replace("{{technique_stixID}}", technique.id)
-                           .replace("{{technique_name}}", technique.name.replace(/ /g, "-").toLowerCase())
+            return this.url.replace(/{{technique_attackID}}/g, technique.attackID)
+                           .replace(/{{technique_stixID}}/g, technique.id)
+                           .replace(/{{technique_name}}/g, technique.name.replace(/ /g, "-").toLowerCase())
 
-                           .replace("{{tactic_attackID}}", tactic.attackID)
-                           .replace("{{tactic_stixID}}", tactic.id)
-                           .replace("{{tactic_name}}", tactic.shortname);
+                           .replace(/{{tactic_attackID}}/g, tactic.attackID)
+                           .replace(/{{tactic_stixID}}/g, tactic.id)
+                           .replace(/{{tactic_name}}/g, tactic.shortname);
         }
     }
 }

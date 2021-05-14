@@ -1,7 +1,7 @@
 <div class="controlsContainer">
     <ul class="control-sections">
         <li class="iewarning" *ngIf="isIE()">
-            Warning: this interface is not fully compatable with your browser. For best results please switch to Edge, Chrome, Firefox or Safari.
+            Warning: this interface is not fully compatable with your browser. For best results please switch to Edge, Chrome, or Firefox.
         </li>
         <li>
             <div class="control-row-item noselect">
@@ -91,7 +91,7 @@
             </div>
             <div class="control-row-item">
                 <div class="control-row-button dropdown noselect"
-                     (click)="showLegendContainer()? currentDropdown = currentDropdown !== 'legend' ? 'legend' : null : continue;"
+                     (click)="showLegendContainer()? currentDropdown = currentDropdown !== 'legend' ? 'legend' : null : null;"
                      matTooltipPosition="below"
                      matTooltip="legend"
                      [style.color]="showLegendContainer() ? '#000000' : '#aaaaaa'">
@@ -178,6 +178,10 @@
                             <label [for]="uid+'checkboxAbout'" class="checkbox-custom-label noselect" [class.disabled]="(!hasName() && !hasDescription()) || !config.showHeader">show about</label>
                         </li>
                         <li>
+                            <input [id]="uid+'checkboxDomain'" type="checkbox" [disabled]="(!hasDomain()) || !config.showHeader" class="checkbox-custom" [(ngModel)]="config.showDomain" (change)="buildSVG()">
+                            <label [for]="uid+'checkboxDomain'" class="checkbox-custom-label noselect" [class.disabled]="(!hasDomain()) || !config.showHeader">show domain</label>
+                        </li>
+                        <li>
                             <input [id]="uid+'checkboxfilters'" type="checkbox" class="checkbox-custom" [disabled]="!config.showHeader"[(ngModel)]="config.showFilters" (change)="buildSVG()">
                             <label [for]="uid+'checkboxfilters'" class="checkbox-custom-label noselect" [class.disabled]="!config.showHeader">show filters</label>
                         </li>
@@ -229,4 +233,8 @@
 
 <div class="svgcontainer" [id]="'svgInsert' + viewModel.uid">
     loading...
+</div>
+
+<div class="close-button">
+    <button mat-button mat-dialog-close>close</button>
 </div>
