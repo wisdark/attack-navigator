@@ -2,14 +2,12 @@ import { Component, Input, ViewChild, AfterViewInit, ViewEncapsulation, OnDestro
 import { DataService } from '../data.service';
 import { ConfigService } from '../config.service';
 import { TabsComponent } from '../tabs/tabs.component';
-import { ViewModel, ViewModelsService, Link, Metadata } from "../viewmodels.service";
+import { ViewModel, ViewModelsService } from "../viewmodels.service";
 import { DomSanitizer } from '@angular/platform-browser';
 import { Subscription } from 'rxjs';
 import * as Excel from 'exceljs/dist/es5/exceljs.browser';
 import * as is from 'is_js';
-
-declare var tinygradient: any; //use tinygradient
-declare var tinycolor: any; //use tinycolor2
+import * as tinycolor from 'tinycolor2';
 
 @Component({
     selector: 'DataTable',
@@ -40,7 +38,7 @@ export class DataTableComponent implements AfterViewInit, OnDestroy {
     saveLayerLocally(){
         var json = this.viewModel.serialize(); //JSON.stringify(this.viewModel.serialize(), null, "\t");
         var blob = new Blob([json], {type: "text/json"});
-        let filename = this.viewModel.name.replace(/ /g, "_") + ".json";
+        let filename = this.viewModel.name.toLowerCase().replace(/ /g, "_") + ".json";
         // FileSaver.saveAs(blob, this.viewModel.name.replace(/ /g, "_") + ".json");
         this.saveBlob(blob, filename);
 
@@ -48,7 +46,7 @@ export class DataTableComponent implements AfterViewInit, OnDestroy {
 
     saveBlob(blob, filename){
         if (is.ie()) { //internet explorer
-            window.navigator.msSaveBlob(blob, filename)
+            window.navigator.msSaveOrOpenBlob(blob, filename)
         } else {
             var svgUrl = URL.createObjectURL(blob);
             var downloadLink = document.createElement("a");
@@ -171,7 +169,7 @@ export class DataTableComponent implements AfterViewInit, OnDestroy {
         // save file
         workbook.xlsx.writeBuffer().then(data => {
             const blob = new Blob( [data], {type: "application/octet-stream"} );
-            const filename = this.viewModel.name.replace(/ /g, "_") + ".xlsx";
+            const filename = this.viewModel.name.toLowerCase().replace(/ /g, "_") + ".xlsx";
             this.saveBlob(blob, filename);
         });
     }

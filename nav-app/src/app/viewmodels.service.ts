@@ -1,18 +1,17 @@
 import { EventEmitter, Injectable, Output } from '@angular/core';
 import { DataService, Technique, Tactic, Matrix, Domain, VersionChangelog } from "./data.service";
-declare var tinygradient: any; //use tinygradient
-// import * as tinygradient from 'tinygradient'
-declare var tinycolor: any; //use tinycolor2
-// import * as tinycolor from 'tinycolor2';
-// import * as FileSaver from 'file-saver';
-declare var math: any; //use mathjs
+import * as tinygradient from 'tinygradient';
+import * as tinycolor from 'tinycolor2';
+import { evaluate } from 'mathjs';
 import * as globals from './globals'; //global variables
 import * as is from 'is_js';
-import { getCookie, hasCookie } from "./cookies";
 
-@Injectable()
+@Injectable({
+  providedIn: 'root'
+})
 export class ViewModelsService {
     @Output() onSelectionChange = new EventEmitter<any>();
+    pinnedCell = "";
 
     constructor(private dataService: DataService) { }
 
@@ -94,7 +93,7 @@ export class ViewModelsService {
             //attempt to evaluate without a scope to catch the case of a static assignment
             try {
                 // evaluate with an empty scope
-                let mathResult = math.eval(scoreExpression, {});
+                let mathResult = evaluate(scoreExpression, {});
                 // if it didn't except after this, it evaluated to a single result.
                 console.log("score expression evaluated to single result to be applied to all techniques");
                 if (is.boolean(mathResult)) {
@@ -134,8 +133,7 @@ export class ViewModelsService {
                     //don't record a result if none of VMs had a score for this technique
                     //did at least one technique have a score for this technique?
                     if (misses < scoreVariables.size) {
-                        // console.log(scope);
-                        let mathResult = math.eval(scoreExpression, scope);
+                        let mathResult = evaluate(scoreExpression, scope);
                         if (is.boolean(mathResult)) {
                             mathResult = mathResult ? "1" : "0"; //boolean to binary
                         } else if (is.not.number(mathResult)) { //user inputted something weird, complain about it
@@ -170,7 +168,6 @@ export class ViewModelsService {
             inherit_vm.techniqueVMs.forEach(function(inherit_TVM) {
                 let tvm = result.hasTechniqueVM_id(inherit_TVM.technique_tactic_union_id) ? result.getTechniqueVM_id(inherit_TVM.technique_tactic_union_id) : new TechniqueVM(inherit_TVM.technique_tactic_union_id)
                 tvm[fieldname] = inherit_TVM[fieldname];
-                // console.log(inherit_TVM.techniqueName, "->", tvm)
                 result.techniqueVMs.set(inherit_TVM.technique_tactic_union_id, tvm);
             })
         }
@@ -423,7 +420,6 @@ export class ViewModel {
 
     loadVMData() {
         if (!this.domainVersionID || !this.dataService.getDomain(this.domainVersionID).dataLoaded) {
-            console.log("subscribing to data loaded callback")
             let self = this;
             this.dataService.onDataLoad(this.domainVersionID, function() {
                 self.initTechniqueVMs()
@@ -1029,7 +1025,7 @@ export class ViewModel {
                 // re-evaluate mismatched values
                 this.linkMismatches = [];
                 this.metadataMismatches = [];
-                for (let technique_tactic_id of this.selectedTechniques) {
+                for (let technique_tactic_id of Array.from(this.selectedTechniques.values())) {
                     let tvm = this.getTechniqueVM_id(technique_tactic_id);
                     if (this.activeTvm.linkStr !== tvm.linkStr) this.linkMismatches.push(technique_tactic_id);
                     if (this.activeTvm.metadataStr !== tvm.metadataStr) this.metadataMismatches.push(technique_tactic_id);
@@ -1086,13 +1082,18 @@ export class ViewModel {
     public isSubtechniqueEnabled(technique, techniqueVM, tactic): boolean {
         if (techniqueVM.enabled) return true;
         else if (technique.subtechniques.length > 0) {
-            return technique.subtechniques.some(subtechnique => this.getTechniqueVM(subtechnique, tactic).enabled);
+            return technique.subtechniques.some(subtechnique => {
+                let sub_platforms = new Set(subtechnique.platforms);
+                let filter = new Set(this.filters.platforms.selection);
+                let platforms = new Set(Array.from(filter.values()).filter(p => sub_platforms.has(p)));
+                return this.getTechniqueVM(subtechnique, tactic).enabled && platforms.size > 0;
+            });
         }
         else return false;
     }
 
     /**
-     * sort techniques accoding to viewModel state
+     * sort techniques according to viewModel state
      * @param {Technique[]} techniques techniques to sort
      * @param {Tactic} tactic tactic the techniques fall under
      * @returns {Technique[]} sorted techniques
@@ -1116,44 +1117,53 @@ export class ViewModel {
                 score2 = this.calculateAggregateScore(technique2, tactic);
                 techniqueVM2.aggregateScore = Number.isFinite(score2) ? score2.toString() : "";
             }
-
-            switch (this.sorting) {
-                default:
-                case 0: // A-Z
-                    return technique1.name.localeCompare(technique2.name);
-                case 1: // Z-A
-                    return technique2.name.localeCompare(technique1.name);
-                case 2: // ascending
-                    if (score1 === score2) {
-                        return technique1.name.localeCompare(technique2.name);
-                    } else {
-                        return score1 - score2;
-                    }
-                case 3: // descending
-                    if (score1 === score2) {
-                        return technique1.name.localeCompare(technique2.name);
-                    } else {
-                        return score2 - score1;
-                    }
-            }
+            return this.sortingAlgorithm(technique1, technique2, score1, score2);
         });
     }
 
+    /**
+     * sort subtechniques according to viewModel state
+     * @param {Technique} technique technique to sort
+     * @param {Tactic} tactic tactic the technique falls under
+     */
     public sortSubTechniques(technique: Technique, tactic: Tactic) {
         technique.subtechniques.sort((technique1: Technique, technique2: Technique) => {
             const techniqueVM1 = this.getTechniqueVM(technique1, tactic);
             const techniqueVM2 = this.getTechniqueVM(technique2, tactic);
             const score1 = techniqueVM1.score.length > 0 ? Number(techniqueVM1.score) : 0;
             const score2 = techniqueVM2.score.length > 0 ? Number(techniqueVM2.score) : 0;
-            switch (this.sorting) {
-                case 2:
-                    return score1 - score2;
-                case 3:
-                    return score2 - score1;
-                default:
-                    return 0;
-            }
+            return this.sortingAlgorithm(technique1, technique2, score1, score2);
         });
+    }
+
+    /**
+     * execute the sorting algorithm for techniques according to the viewModel state
+     * @param {Technique} technique1 the first technique in the comparison
+     * @param {Technique} technique2 the second technique in the comparison
+     * @param {number} score1 the first score in the comparison
+     * @param {number} score2 the second score in the comparison
+     * @returns technique or score comparison
+     */
+    private sortingAlgorithm(technique1: Technique, technique2: Technique, score1: number, score2: number) {
+        switch (this.sorting) {
+            default:
+            case 0: // A-Z
+                return technique1.name.localeCompare(technique2.name);
+            case 1: // Z-A
+                return technique2.name.localeCompare(technique1.name);
+            case 2: // 1-2
+                if (score1 === score2) {
+                    return technique1.name.localeCompare(technique2.name);
+                } else {
+                    return score1 - score2;
+                }
+            case 3: // 2-1
+                if (score1 === score2) {
+                    return technique1.name.localeCompare(technique2.name);
+                } else {
+                    return score2 - score1;
+                }
+        }
     }
 
     public calculateAggregateScore(technique: Technique, tactic: Tactic): any {
@@ -1239,7 +1249,8 @@ export class ViewModel {
             "layer": globals.layer_version
         }
 
-        rep.domain = this.domainVersionID.substr(0, this.domainVersionID.search(/-v[0-9]+/g));
+        let domain = this.dataService.getDomain(this.domainVersionID);
+        rep.domain = domain.domain_identifier;
         rep.description = this.description;
         rep.filters = JSON.parse(this.filters.serialize());
         rep.sorting = this.sorting;
@@ -1266,11 +1277,11 @@ export class ViewModel {
     deSerializeDomainVersionID(rep: any): void {
         let obj = (typeof(rep) == "string")? JSON.parse(rep) : rep
         this.name = obj.name
-        this.version = this.dataService.getCurrentVersion(); // layer with no specified version defaults to current version
+        this.version = this.dataService.getCurrentVersion().number; // layer with no specified version defaults to current version
         if ("versions" in obj) {
             if ("attack" in obj.versions) {
                 if (typeof(obj.versions.attack) === "string") {
-                    if (obj.versions.attack.length > 0) this.version = "v" + obj.versions.attack.match(/[0-9]+/g)[0];
+                    if (obj.versions.attack.length > 0) this.version = obj.versions.attack.match(/[0-9]+/g)[0];
                 }
                 else console.error("TypeError: attack version field is not a string");
             }
@@ -1655,8 +1666,11 @@ export class TechniqueVM {
         if (techniqueID !== undefined) this.techniqueID = techniqueID;
         else console.error("ERROR: TechniqueID field not present in technique")
 
-        if ("tactic" !== undefined) this.tactic = tactic;
-        else console.error("ERROR: tactic field not present in technique")
+        if (tactic !== undefined && tactic !== "") this.tactic = tactic;
+        else {
+            console.error("WARNING: tactic field not present in technique");
+            alert(`WARNING: The tactic field on the technique ID ${techniqueID} is not defined. Annotations for this technique may not be restored.`);
+        }
         if ("comment" in obj) {
             if (typeof(obj.comment) === "string") this.comment = obj.comment;
             else console.error("TypeError: technique comment field is not a number:", obj.comment, "(",typeof(obj.comment),")")
