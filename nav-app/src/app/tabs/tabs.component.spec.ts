@@ -1,52 +1,64 @@
-import { ComponentFixture, TestBed, fakeAsync, flush, waitForAsync } from '@angular/core/testing';
-import { HttpClientTestingModule } from '@angular/common/http/testing';
-import { TabsComponent } from './tabs.component';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { DataService } from '../services/data.service';
-import { Tab, TechniqueVM, Domain, Version, ViewModel } from '../classes';
-import { HelpComponent } from '../help/help.component';
-import { SvgExportComponent } from '../svg-export/svg-export.component';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { ChangelogComponent } from '../changelog/changelog.component';
-import { LayerInformationComponent } from '../layer-information/layer-information.component';
-import * as is from 'is_js';
-import { HttpClient } from '@angular/common/http';
-import { of } from 'rxjs';
-import { Technique } from '../classes/stix';
-import { ConfigService } from '../services/config.service';
-import * as MockLayers from '../../tests/utils/mock-layers';
+import { ComponentFixture, TestBed, fakeAsync, flush, waitForAsync } from "@angular/core/testing";
+import { TabsComponent } from "./tabs.component";
+import { ViewModelsService } from "../services/viewmodels.service";
+import { DataService } from "../services/data.service";
+import { HttpClient, HttpClientModule } from "@angular/common/http";
+import { MatDialog, MatDialogModule } from "@angular/material/dialog";
+import { MatSnackBar, MatSnackBarModule } from "@angular/material/snack-bar";
+import { FormsModule } from "@angular/forms";
+import { Domain, Tab, TechniqueVM, Version, ViewModel } from "../classes";
+import { MatTabsModule } from "@angular/material/tabs";
+import { ConfigService } from "../services/config.service";
 import * as MockData from '../../tests/utils/mock-data';
+import * as MockLayers from '../../tests/utils/mock-layers';
+import { of } from "rxjs";
+import { ChangelogComponent } from "../changelog/changelog.component";
+import { HelpComponent } from "../help/help.component";
+import { LayerInformationComponent } from "../layer-information/layer-information.component";
+import { SvgExportComponent } from "../svg-export/svg-export.component";
+import { Technique } from "../classes/stix";
 
 describe('TabsComponent', () => {
-    let component: TabsComponent;
-    let fixture: ComponentFixture<TabsComponent>;
-    let dialog: MatDialog;
-    let dataService: DataService;
-    let configService: ConfigService;
-    let http: HttpClient;
+	let component: TabsComponent;
+	let fixture: ComponentFixture<TabsComponent>;
+	let dataService: DataService;
+	let configService: ConfigService;
+	let dialog: MatDialog;
+	let http: HttpClient;
 
     let testTab = new Tab('test tab', true, false, 'enterprise-attack', true);
     let loadData = {
-        url: 'https://raw.githubusercontent.com/mitre-attack/attack-navigator/master/layers/data/samples/Bear_APT.json',
+        url: 'https://raw.githubusercontent.com/mitre-attack/attack-navigator/master/layers/samples/Bear_APT.json',
         version: '14',
         identifier: 'enterprise-attack',
     };
 
-    beforeEach(() => {
-        TestBed.configureTestingModule({
-            imports: [HttpClientTestingModule, MatDialogModule],
-            providers: [DataService, { provide: MatSnackBar, useValue: {} }],
-        }).compileComponents();
-        dialog = TestBed.inject(MatDialog);
-        configService = TestBed.inject(ConfigService);
-        configService.versions = { enabled: true, entries: [] };
-        configService.banner = 'test banner';
-        configService.defaultLayers = MockData.defaultLayersDisabled;
-        dataService = TestBed.inject(DataService);
-        http = TestBed.inject(HttpClient);
-        fixture = TestBed.createComponent(TabsComponent);
-        component = fixture.debugElement.componentInstance;
-    });
+	beforeEach(async () => {
+		await TestBed.configureTestingModule({
+			declarations: [TabsComponent],
+			imports: [
+				HttpClientModule,
+				MatDialogModule,
+				MatSnackBarModule,
+				MatTabsModule,
+				FormsModule,
+			],
+			providers: [
+				ViewModelsService,
+				DataService,
+				ConfigService,
+				{provide: MatSnackBar, useValue: {}}
+			]
+		}).compileComponents();
+
+		configService = TestBed.inject(ConfigService);
+		configService.defaultLayers = MockData.defaultLayersDisabled;
+		fixture = TestBed.createComponent(TabsComponent);
+		component = fixture.componentInstance;
+		dataService = TestBed.inject(DataService);
+		dialog = TestBed.inject(MatDialog);
+		http = TestBed.inject(HttpClient);
+	});
 
     describe('constructor', () => {
         beforeEach(() => {
@@ -77,22 +89,6 @@ describe('TabsComponent', () => {
             fixture = TestBed.createComponent(TabsComponent);
             component = fixture.debugElement.componentInstance;
             expect(component.bannerContent).toEqual(configService.banner);
-        });
-    });
-
-    describe('ngAfterViewInit', () => {
-        it('should open Safari warning for Safari version <= 13', () => {
-            spyOn(is, 'safari').withArgs('<=13').and.returnValue(true);
-            let dialogSpy = spyOn(dialog, 'open');
-            component.ngAfterViewInit();
-            expect(dialogSpy).toHaveBeenCalled();
-        });
-
-        it('should not open Safari warning for Safari version > 13 or non-Safari browsers', () => {
-            spyOn(is, 'safari').withArgs('<=13').and.returnValue(false);
-            let dialogSpy = spyOn(dialog, 'open');
-            component.ngAfterViewInit();
-            expect(dialogSpy).not.toHaveBeenCalled();
         });
     });
 
@@ -296,6 +292,26 @@ describe('TabsComponent', () => {
         });
     });
 
+    describe('validateInput', () => {
+        it('should validate input and throw errors', waitForAsync(() => {
+            let layer = JSON.parse(JSON.stringify(MockLayers.invalidLayerFile1));
+            let alertSpy = spyOn(window, 'alert');
+            let consoleSpy = spyOn(console, 'error');
+            component.validateInput(layer, 'enterprise-attack-13');
+            expect(consoleSpy).toHaveBeenCalled();
+            expect(alertSpy).toHaveBeenCalled();
+        }));
+
+        it('should validate if the domainVersionID is unique', waitForAsync(() => {
+			let layer = JSON.parse(JSON.stringify(MockLayers.invalidLayerFile1));
+            let alertSpy = spyOn(window, 'alert');
+            let consoleSpy = spyOn(console, 'error');
+            component.validateInput(layer, 'enterprise-attack-13');
+            expect(consoleSpy).toHaveBeenCalled();
+            expect(alertSpy).toHaveBeenCalled();
+        }));
+    });
+
     describe('tab utility functions', () => {
         it('should handle links', () => {
             configService.featureList = [
@@ -321,7 +337,7 @@ describe('TabsComponent', () => {
             expect(component.layerLinkURLs.length).toEqual(1);
             component.getLayerLink();
             component.removeLayerLink(0);
-            let url_string = component.getLayerLink();
+            let url_string = "https://mitre-attack.github.io/attack-navigator/#disable_techniques=false&sticky_toolbar=false"
             expect(url_string).toContain('disable_techniques=false&sticky_toolbar=false');
         });
 
@@ -424,14 +440,12 @@ describe('TabsComponent', () => {
         });
 
         it('should open the selected dialog', () => {
-            const settings = { maxWidth: '75ch', panelClass: component.userTheme };
+            const settings = { maxWidth: '75ch', panelClass: component.userTheme, autoFocus: false, data: {theme: undefined} };
             const openDialogSpy = spyOn(component.dialog, 'open');
 
             // layer dialog
             component.openDialog('layers');
-            expect(openDialogSpy).toHaveBeenCalledWith(LayerInformationComponent, {
-                maxWidth: '90ch',
-            });
+            expect(openDialogSpy).toHaveBeenCalledWith(LayerInformationComponent, settings);
 
             // help dialog
             component.openDialog('help');
@@ -450,12 +464,14 @@ describe('TabsComponent', () => {
             const settings = {
                 data: { vm: viewModel },
                 panelClass: ['dialog-custom', component.userTheme],
+                autoFocus: false,
             };
             expect(openDialogSpy).toHaveBeenCalledWith(SvgExportComponent, settings);
         });
 
         it('should create new layer from url', waitForAsync(() => {
             component.dataService.setUpDomains(MockData.configData.entries);
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             component.http = http;
             spyOn(component.http, 'get').and.returnValue(of(MockLayers.layerFile1));
             spyOn(component.dataService, 'loadDomainData').and.returnValue(Promise.resolve());
@@ -465,6 +481,7 @@ describe('TabsComponent', () => {
 
         it('should read and open json file', waitForAsync(() => {
             component.dataService.setUpDomains(MockData.configData.entries);
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             let mockedDocElement = document.createElement('input');
             mockedDocElement.id = 'uploader';
             mockedDocElement.value = 'test1';
@@ -493,26 +510,6 @@ describe('TabsComponent', () => {
         });
     });
 
-    describe('validateInput', () => {
-        it('should validate input and throw errors', waitForAsync(() => {
-            let layer = JSON.parse(JSON.stringify(MockLayers.invalidLayerFile1));
-            let alertSpy = spyOn(window, 'alert');
-            let consoleSpy = spyOn(console, 'error');
-            component.validateInput(layer, 'enterprise-attack-13');
-            expect(consoleSpy).toHaveBeenCalled();
-            expect(alertSpy).toHaveBeenCalled();
-        }));
-
-        it('should validate if the domainVersionID is unique', waitForAsync(() => {
-            let layer = JSON.parse(JSON.stringify(MockLayers.invalidLayerFile1));
-            let alertSpy = spyOn(window, 'alert');
-            let consoleSpy = spyOn(console, 'error');
-            component.validateInput(layer, 'enterprise-attack-13');
-            expect(consoleSpy).toHaveBeenCalled();
-            expect(alertSpy).toHaveBeenCalled();
-        }));
-    });
-
     describe('layerByOperation', () => {
         it('should create new layer by operation based on user input', () => {
             component.opSettings.scoreExpression = 'a+b';
@@ -523,6 +520,7 @@ describe('TabsComponent', () => {
             component.openTab('layer1', vm2, true, true, true, true);
             expect(component.getScoreExpressionError()).toEqual('Layer b does not match the chosen domain');
             component.dataService.setUpDomains(MockData.configData.entries); // set up data
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             component.opSettings.domain = 'enterprise-attack-13';
             expect(component.getFilteredVMs()).toEqual(component.viewModelsService.viewModels);
             spyOn(component.dataService, 'loadDomainData').and.returnValue(Promise.resolve());
@@ -537,6 +535,7 @@ describe('TabsComponent', () => {
             component.openTab('layer', vm1, true, true, true, true);
             expect(component.getScoreExpressionError()).toEqual(null);
             component.dataService.setUpDomains(MockData.configData.entries); // set up data
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             component.dataService.parseBundles(component.dataService.getDomain('enterprise-attack-13'), MockData.stixBundleSDO); //load the data
             component.opSettings.domain = 'enterprise-attack-13';
             spyOn(component.dataService, 'loadDomainData').and.returnValue(Promise.resolve());
@@ -553,6 +552,7 @@ describe('TabsComponent', () => {
             component.openTab('layer2', vm2, true, true, true, true);
 
             component.dataService.setUpDomains(MockData.configDataExtended.entries); // set up data
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             component.dataService.parseBundles(component.dataService.getDomain('enterprise-attack-13'), MockData.stixBundleSDO); //load the data
             component.opSettings.domain = 'enterprise-attack-13';
             let alertSpy = spyOn(window, 'alert');
@@ -566,6 +566,7 @@ describe('TabsComponent', () => {
     describe('versionUpgradeDialog', () => {
         it('should upgrade layer', waitForAsync(() => {
             component.dataService.setUpDomains(MockData.configDataExtended.entries);
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             let layer = JSON.parse(JSON.stringify(MockLayers.layerFile1));
             let vm1 = component.viewModelsService.newViewModel('layer2', 'enterprise-attack-12');
             let versionUpgradeSpy = spyOn(component, 'versionUpgradeDialog').and.returnValue(
@@ -576,12 +577,13 @@ describe('TabsComponent', () => {
                 expect(versionUpgradeSpy).toHaveBeenCalled();
             });
             fixture.whenStable().then(() => {
-                expect(component.layerTabs.length).toEqual(1);
+                expect(component.layerTabs.length).toEqual(2);
             });
         }));
 
         it('should not upgrade layer', waitForAsync(() => {
             component.dataService.setUpDomains(MockData.configDataExtended.entries);
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             let layer = JSON.parse(JSON.stringify(MockLayers.layerFile1));
             let vm1 = component.viewModelsService.newViewModel('layer2', 'enterprise-attack-12');
             let versionUpgradeSpy = spyOn(component, 'versionUpgradeDialog').and.returnValue(Promise.resolve(null));
@@ -596,6 +598,7 @@ describe('TabsComponent', () => {
 
         it('should not upgrade layer with domain data loaded', waitForAsync(() => {
             component.dataService.setUpDomains(MockData.configDataExtended.entries);
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             component.dataService.parseBundles(component.dataService.getDomain('enterprise-attack-13'), MockData.stixBundleSDO);
             let layer = JSON.parse(JSON.stringify(MockLayers.layerFile1));
             let vm1 = component.viewModelsService.newViewModel('layer2', 'enterprise-attack-13');
@@ -621,6 +624,7 @@ describe('TabsComponent', () => {
     describe('upgradeLayer', () => {
         it('should upgrade layer', waitForAsync(() => {
             component.dataService.setUpDomains(MockData.configDataExtended.entries);
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             let layer = JSON.parse(JSON.stringify(MockLayers.layerFile1));
             let vm1 = component.viewModelsService.newViewModel('layer2', 'enterprise-attack-12');
             let versionUpgradeSpy = spyOn(component, 'versionUpgradeDialog').and.returnValue(
@@ -631,12 +635,13 @@ describe('TabsComponent', () => {
                 expect(versionUpgradeSpy).toHaveBeenCalled();
             });
             fixture.whenStable().then(() => {
-                expect(component.layerTabs.length).toEqual(1);
+                expect(component.layerTabs.length).toEqual(2);
             });
         }));
 
         it('should not upgrade layer', waitForAsync(() => {
             component.dataService.setUpDomains(MockData.configDataExtended.entries);
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             let layer = JSON.parse(JSON.stringify(MockLayers.layerFile1));
             let vm1 = component.viewModelsService.newViewModel('layer2', 'enterprise-attack-12');
             let versionUpgradeSpy = spyOn(component, 'versionUpgradeDialog').and.returnValue(Promise.resolve(null));
@@ -651,6 +656,7 @@ describe('TabsComponent', () => {
 
         it('should not upgrade layer with default layer enabled', waitForAsync(() => {
             component.dataService.setUpDomains(MockData.configDataExtended.entries);
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             let layer = JSON.parse(JSON.stringify(MockLayers.layerFile1));
             let vm1 = component.viewModelsService.newViewModel('layer2', 'enterprise-attack-12');
             spyOn(component.dataService, 'loadDomainData').and.returnValue(Promise.resolve());
@@ -662,6 +668,7 @@ describe('TabsComponent', () => {
 
         it('should not upgrade layer with default layer enabled and domain data loaded', waitForAsync(() => {
             component.dataService.setUpDomains(MockData.configDataExtended.entries);
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             component.dataService.parseBundles(component.dataService.getDomain('enterprise-attack-13'), MockData.stixBundleSDO);
             let bb = JSON.parse(JSON.stringify(MockLayers.layerFile1));
             let vm1 = component.viewModelsService.newViewModel('layer2', 'enterprise-attack-13');
@@ -674,6 +681,7 @@ describe('TabsComponent', () => {
 
         it('should not upgrade layer with domain data loaded', waitForAsync(() => {
             component.dataService.setUpDomains(MockData.configDataExtended.entries);
+            component.dataService.latestVersion = new Version('enterprise-attack-13', '13');
             component.dataService.parseBundles(component.dataService.getDomain('enterprise-attack-13'), MockData.stixBundleSDO);
             let layer = JSON.parse(JSON.stringify(MockLayers.layerFile1));
             let vm1 = component.viewModelsService.newViewModel('layer2', 'enterprise-attack-13');
@@ -697,17 +705,6 @@ describe('TabsComponent', () => {
     });
 
     describe('loadLayerFromURL', () => {
-        it('should load from url', waitForAsync(() => {
-            component.dataService.setUpDomains(MockData.configData.entries);
-            component.http = http;
-            spyOn(component.http, 'get').and.returnValue(of(MockLayers.layerFile1));
-            component
-                .loadLayerFromURL('https://raw.githubusercontent.com/mitre-attack/attack-navigator/master/layers/data/samples/Bear_APT.json', false)
-                .then(() => {
-                    expect(component.loadTabs.length).toEqual(1);
-                });
-        }));
-
         it('should throw errors when loading from url', waitForAsync(() => {
             let versions = [
                 {
@@ -723,12 +720,13 @@ describe('TabsComponent', () => {
                 },
             ];
             component.dataService.setUpDomains(versions);
+            component.dataService.latestVersion = new Version('mobile-attack-13', '13');
             component.http = http;
             spyOn(component.http, 'get').and.returnValue(of(MockLayers.layerFile1));
             let alertSpy = spyOn(window, 'alert');
             let consoleSpy = spyOn(console, 'error');
             component
-                .loadLayerFromURL('https://raw.githubusercontent.com/mitre-attack/attack-navigator/master/layers/data/samples/Bear_APT.json', false)
+                .loadLayerFromURL('https://raw.githubusercontent.com/mitre-attack/attack-navigator/master/layers/samples/Bear_APT.json', false)
                 .then(() => {
                     expect(consoleSpy).toHaveBeenCalled();
                     expect(alertSpy).toHaveBeenCalled();

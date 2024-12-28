@@ -1,7 +1,6 @@
 import { BrowserModule, Title } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { APP_INITIALIZER, NgModule } from '@angular/core';
-import 'rxjs/add/operator/map';
 
 // material
 import { MatInputModule } from '@angular/material/input';
@@ -19,7 +18,6 @@ import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { ColorPickerModule } from 'ngx-color-picker';
 import { DndModule } from 'ngx-drag-drop';
-import { PopoverModule } from 'ngx-smart-popover';
 import { HttpClientModule } from '@angular/common/http';
 
 import { AppComponent } from './app.component';
@@ -43,6 +41,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatPaginatorModule } from '@angular/material/paginator';
+import { LayerSettingsComponent } from './layer-settings/layer-settings.component';
 
 import { MarkdownModule } from 'ngx-markdown';
 import { LayerInformationComponent } from './layer-information/layer-information.component';
@@ -73,6 +72,7 @@ import { ConfigService } from './services/config.service';
         LayerInformationComponent,
         ChangelogComponent,
         ListInputComponent,
+        LayerSettingsComponent,
     ],
     imports: [
         BrowserModule,
@@ -99,7 +99,6 @@ import { ConfigService } from './services/config.service';
         MatStepperModule,
         MatPaginatorModule,
         MarkdownModule.forRoot(),
-        PopoverModule,
         MatTabsModule,
     ],
     exports: [MatSelectModule, MatInputModule, MatButtonModule, MatIconModule, MatTooltipModule, MatMenuModule, MatExpansionModule, MatTabsModule],

@@ -11,9 +11,9 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
 import { ChangelogComponent } from '../changelog/changelog.component';
 import { Subscription, forkJoin } from 'rxjs';
-import * as is from 'is_js';
 import * as globals from '../utils/globals';
 import { LayerInformationComponent } from '../layer-information/layer-information.component';
+import { isSafari } from '../utils/utils';
 
 @Component({
     selector: 'tabs',
@@ -94,7 +94,7 @@ export class TabsComponent implements AfterViewInit {
     }
 
     ngAfterViewInit(): void {
-        if (is.safari('<=13')) {
+        if (isSafari('<=13')) {
             // open safari version incompatibility warning
             this.safariDialogRef = this.dialog.open(this.safariWarning, {
                 width: '350px',
@@ -306,15 +306,13 @@ export class TabsComponent implements AfterViewInit {
      * @param {string} dialogName {"changelog"|"help"} the dialog to open
      */
     public openDialog(dialogName: string) {
-        const settings = { maxWidth: '75ch', panelClass: this.userTheme };
+        const settings = { maxWidth: '75ch', panelClass: this.userTheme, autoFocus: false, data: {theme: this.userTheme} };
         if (dialogName == 'changelog') {
             this.dialog.open(ChangelogComponent, settings);
         } else if (dialogName == 'help') {
             this.dialog.open(HelpComponent, settings);
         } else if (dialogName == 'layers') {
-            this.dialog.open(LayerInformationComponent, {
-                maxWidth: '90ch',
-            });
+            this.dialog.open(LayerInformationComponent, settings);
         }
     }
 
@@ -326,6 +324,7 @@ export class TabsComponent implements AfterViewInit {
         this.dialog.open(SvgExportComponent, {
             data: { vm: viewModel },
             panelClass: ['dialog-custom', this.userTheme],
+            autoFocus: false,
         });
     }
 
@@ -604,6 +603,7 @@ export class TabsComponent implements AfterViewInit {
                     disableClose: true,
                     width: '25%',
                     panelClass: this.userTheme,
+                    autoFocus: false,
                 });
                 this.subscription = dialog.afterClosed().subscribe({
                     next: (result) => {
@@ -906,7 +906,7 @@ export class TabsComponent implements AfterViewInit {
             str += join + 'layerURL=' + encodeURIComponent(layerLinkURL);
             join = '&';
         }
-        for (let feature of this.configService.featureList) {
+        for (let feature of this.configService.customizefeatureList) {
             if (feature.subfeatures) {
                 for (let subfeature of feature.subfeatures) {
                     if (!subfeature.enabled) {
